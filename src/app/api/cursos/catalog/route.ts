@@ -129,9 +129,15 @@ export async function GET(req: NextRequest) {
         "Formações técnicas e práticas em Enfermagem Dermatológica, Manejo Avançado de Feridas, Laserterapia e Estética Avançada.",
     };
 
+    const avatarRow = db
+      .prepare("SELECT avatar_url, professional_name FROM site_settings LIMIT 1")
+      .get() as { avatar_url?: string; professional_name?: string } | undefined;
+
     return NextResponse.json({
       courses: coursesWithCounts,
       pageHeader,
+      avatarUrl: avatarRow?.avatar_url || "/images/fernanda-portrait.svg",
+      professionalName: avatarRow?.professional_name || "Fernanda Caetano",
       enrolledCourseIds,
       completedLessonIds,
       isAdminPreview: Boolean(adminSession && !studentSession),

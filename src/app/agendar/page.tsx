@@ -29,6 +29,11 @@ export default async function AgendarPage({
 
       <section className="bg-navy text-offwhite py-8 sm:py-10 border-b border-gold/30">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
+          <img
+            src={settings.avatar_url || "/images/fernanda-portrait.svg"}
+            alt={settings.professional_name}
+            className="w-20 h-20 rounded-full mx-auto border-2 border-gold object-cover shadow-luxury mb-3"
+          />
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-gold/30 text-[11px] uppercase tracking-widest text-gold font-medium mb-2">
             <CalendarCheck className="w-3.5 h-3.5 text-gold" />
             Agenda Online Integrada

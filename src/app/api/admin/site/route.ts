@@ -54,6 +54,36 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const now = new Date().toISOString();
 
+    // 0. Atualizar Foto de Perfil recortada (Estilo WhatsApp) em todo o sistema
+    if (body.action === "update_avatar" && body.avatarUrl) {
+      db.prepare(
+        "UPDATE site_settings SET avatar_url = ?, published_at = ?, updated_at = ? WHERE id = 'main'"
+      ).run(body.avatarUrl, now, now);
+
+      db.prepare(
+        "UPDATE admin_profiles SET avatar_url = ?, updated_at = ?"
+      ).run(body.avatarUrl, now);
+
+      // Se existir rascunho ativo, atualiza o avatar nele também
+      const row = db
+        .prepare("SELECT draft_json FROM site_settings WHERE id = 'main'")
+        .get() as { draft_json: string | null } | undefined;
+      if (row?.draft_json) {
+        try {
+          const parsedDraft = JSON.parse(row.draft_json);
+          parsedDraft.avatar_url = body.avatarUrl;
+          db.prepare(
+            "UPDATE site_settings SET draft_json = ? WHERE id = 'main'"
+          ).run(JSON.stringify(parsedDraft));
+        } catch {
+          // ignore
+        }
+      }
+
+      await pushAllTablesToTurso();
+      return NextResponse.json({ success: true, avatarUrl: body.avatarUrl });
+    }
+
     // 1. Salvar rascunho de configurações do site
     if (body.action === "save_draft") {
       db.prepare(
@@ -114,6 +144,11 @@ export async function POST(req: NextRequest) {
         now,
         now
       );
+      if (s.avatar_url) {
+        db.prepare(
+          "UPDATE admin_profiles SET avatar_url = ?, updated_at = ?"
+        ).run(s.avatar_url, now);
+      }
       await pushAllTablesToTurso();
       return NextResponse.json({ success: true });
     }

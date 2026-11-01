@@ -32,6 +32,7 @@ export default function CursosCatalogPage() {
   } | null>(null);
   const [isAdminPreview, setIsAdminPreview] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [avatarUrl, setAvatarUrl] = useState("/images/fernanda-portrait.svg");
 
   async function loadCatalog() {
     setLoading(true);
@@ -40,6 +41,7 @@ export default function CursosCatalogPage() {
       const data = await res.json();
       if (data.courses) setCourses(data.courses);
       if (data.pageHeader) setPageHeader(data.pageHeader);
+      if (data.avatarUrl) setAvatarUrl(data.avatarUrl);
       if (data.enrolledCourseIds) setEnrolledIds(data.enrolledCourseIds);
       if (data.student) setStudent(data.student);
       if (data.isAdminPreview) setIsAdminPreview(true);
@@ -118,7 +120,13 @@ export default function CursosCatalogPage() {
             )}
           </div>
 
-          <div className="max-w-3xl space-y-2">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+          <img
+            src={avatarUrl}
+            alt="Dra. Fernanda Caetano"
+            className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 border-gold object-cover shadow-luxury shrink-0"
+          />
+          <div className="max-w-3xl space-y-2 min-w-0">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gold/20 border border-gold/40 text-gold-light text-[11px] font-medium uppercase tracking-[0.2em]">
               <GraduationCap className="w-4 h-4" />
               <span>Academy • Dra. Fernanda Caetano</span>
@@ -129,6 +137,7 @@ export default function CursosCatalogPage() {
             <p className="text-sm sm:text-base font-normal text-white/85">
               {pageHeader.subtitle}
             </p>
+          </div>
           </div>
         </div>
       </header>

@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { SiteSettings } from "@/types/domain";
-import { Check, Lock, Save, Settings, ShieldCheck } from "lucide-react";
+import { AvatarCropperModal } from "@/components/AvatarCropperModal";
+import { Camera, Check, Lock, Save, Settings, ShieldCheck } from "lucide-react";
 
 export default function AdminConfiguracoesPage() {
   const [settings, setSettings] = useState<SiteSettings | null>(null);
@@ -16,6 +17,35 @@ export default function AdminConfiguracoesPage() {
   } | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [toast, setToast] = useState<string | null>(null);
+  const [cropperSrc, setCropperSrc] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  function handleSelectAvatarFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") setCropperSrc(reader.result);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+
+  async function handleConfirmCroppedAvatar(croppedDataUrl: string) {
+    setCropperSrc(null);
+    setSettings((prev) =>
+      prev ? { ...prev, avatar_url: croppedDataUrl } : prev
+    );
+    await fetch("/api/admin/site", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "update_avatar", avatar_url: croppedDataUrl }),
+    });
+    window.dispatchEvent(
+      new CustomEvent("fernanda-avatar-updated", { detail: croppedDataUrl })
+    );
+    notify("Foto de perfil atualizada em todo o site e painel!");
+  }
 
   useEffect(() => {
     Promise.all([
@@ -237,6 +267,42 @@ export default function AdminConfiguracoesPage() {
             </h2>
           </div>
 
+          <div className="flex items-center gap-4 p-3.5 rounded-2xl bg-offwhite">
+            <button
+              type="button"
+              onClick={() => avatarInputRef.current?.click()}
+              className="relative w-20 h-20 rounded-full border-2 border-gold overflow-hidden shrink-0 group"
+              title="Trocar foto de perfil"
+            >
+              <img
+                src={settings.avatar_url || "/images/fernanda-portrait.svg"}
+                alt="Foto de perfil"
+                className="w-full h-full object-cover"
+              />
+              <span className="absolute inset-0 bg-navy/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <Camera className="w-5 h-5 text-gold" />
+              </span>
+            </button>
+            <div className="min-w-0 space-y-1.5">
+              <p className="text-sm font-semibold text-navy">Foto de Perfil</p>
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-terracotta hover:bg-terracotta-dark text-white text-xs font-semibold"
+              >
+                <Camera className="w-3.5 h-3.5" />
+                <span>Alterar e Recortar Foto</span>
+              </button>
+            </div>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleSelectAvatarFile}
+              className="hidden"
+            />
+          </div>
+
           <div>
             <label className="block text-xs font-semibold text-navy mb-1">
               E-mail de Login
@@ -299,6 +365,13 @@ export default function AdminConfiguracoesPage() {
           </button>
         </form>
       </div>
+
+      <AvatarCropperModal
+        isOpen={Boolean(cropperSrc)}
+        imageSrc={cropperSrc}
+        onClose={() => setCropperSrc(null)}
+        onConfirmCrop={handleConfirmCroppedAvatar}
+      />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   CustomLink,
@@ -12,10 +12,13 @@ import {
   Unit,
 } from "@/types/domain";
 import { DynamicIcon, ICON_OPTIONS } from "@/components/DynamicIcon";
+import { AvatarCropperModal } from "@/components/AvatarCropperModal";
 import {
   ArrowDown,
   ArrowUp,
+  Camera,
   Check,
+  Crop,
   Edit3,
   Eye,
   EyeOff,
@@ -23,6 +26,7 @@ import {
   GripVertical,
   Palette,
   Plus,
+  RotateCcw,
   Save,
   Sparkles,
   Trash2,
@@ -39,6 +43,8 @@ export default function AdminSiteEditorPage() {
     "links"
   );
   const [toast, setToast] = useState<string | null>(null);
+  const [cropperSrc, setCropperSrc] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   // Estado do Modal de Botão (Criar / Editar)
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -89,6 +95,58 @@ export default function AdminSiteEditorPage() {
   useEffect(() => {
     loadEditorData();
   }, []);
+
+  useEffect(() => {
+    function handleAvatarUpdated(e: Event) {
+      const custom = e as CustomEvent<string>;
+      if (custom.detail) {
+        setSettings((prev) =>
+          prev ? { ...prev, avatar_url: custom.detail } : prev
+        );
+      }
+    }
+    window.addEventListener("fernanda-avatar-updated", handleAvatarUpdated);
+    return () => {
+      window.removeEventListener(
+        "fernanda-avatar-updated",
+        handleAvatarUpdated
+      );
+    };
+  }, []);
+
+  function handleSelectAvatarFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setCropperSrc(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+
+  async function handleConfirmCroppedAvatar(croppedDataUrl: string) {
+    setCropperSrc(null);
+    setSettings((prev) =>
+      prev ? { ...prev, avatar_url: croppedDataUrl } : prev
+    );
+    await fetch("/api/admin/site", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "update_avatar",
+        avatar_url: croppedDataUrl,
+      }),
+    });
+    window.dispatchEvent(
+      new CustomEvent("fernanda-avatar-updated", { detail: croppedDataUrl })
+    );
+    showSuccessToast(
+      "Foto de perfil recortada e atualizada em todo o site e painel!"
+    );
+  }
 
   function openNewLinkModal() {
     setEditingLink(null);
@@ -332,11 +390,10 @@ export default function AdminSiteEditorPage() {
             key={tab.id}
             type="button"
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
-              activeTab === tab.id
+            className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${activeTab === tab.id
                 ? "bg-navy text-offwhite shadow-sm"
                 : "bg-white text-slate hover:text-navy border border-offwhite-border"
-            }`}
+              }`}
           >
             {tab.label}
           </button>
@@ -460,17 +517,16 @@ export default function AdminSiteEditorPage() {
                         setDragOverIndex(null);
                       }}
                       onDrop={() => handleDrop(index)}
-                      className={`relative p-4 rounded-2xl border-2 transition-all duration-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 select-none ${
-                        isBeingDragged
+                      className={`relative p-4 rounded-2xl border-2 transition-all duration-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 select-none ${isBeingDragged
                           ? "bg-terracotta/10 border-terracotta ring-4 ring-terracotta/25 scale-[0.98] shadow-luxury"
                           : isDropTarget
-                          ? "bg-navy/10 border-navy ring-4 ring-gold/40 -translate-y-1 shadow-luxury"
-                          : wasJustMoved
-                          ? "bg-emerald-50 border-emerald-500 ring-4 ring-emerald-500/20 shadow-md"
-                          : Boolean(link.is_active)
-                          ? "bg-offwhite/60 border-offwhite-border hover:border-navy/40 shadow-sm"
-                          : "bg-offwhite/25 border-dashed border-slate/40 opacity-65"
-                      }`}
+                            ? "bg-navy/10 border-navy ring-4 ring-gold/40 -translate-y-1 shadow-luxury"
+                            : wasJustMoved
+                              ? "bg-emerald-50 border-emerald-500 ring-4 ring-emerald-500/20 shadow-md"
+                              : Boolean(link.is_active)
+                                ? "bg-offwhite/60 border-offwhite-border hover:border-navy/40 shadow-sm"
+                                : "bg-offwhite/25 border-dashed border-slate/40 opacity-65"
+                        }`}
                     >
                       {isDropTarget && (
                         <div className="absolute -top-3 left-4 px-3 py-0.5 rounded-full bg-navy text-gold-light text-[10px] font-extrabold uppercase tracking-wider shadow-md flex items-center gap-1">
@@ -595,6 +651,82 @@ export default function AdminSiteEditorPage() {
                 Identidade Profissional & Conteúdo Institucional
               </h2>
 
+              {/* FOTO DE PERFIL ESTILO WHATSAPP */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-offwhite/70 border border-offwhite-border flex flex-col sm:flex-row items-center gap-5">
+                <button
+                  type="button"
+                  onClick={() => avatarInputRef.current?.click()}
+                  className="relative w-28 h-28 rounded-full border-[3px] border-gold shadow-card shrink-0 group overflow-hidden"
+                  title="Trocar foto de perfil"
+                >
+                  <img
+                    src={settings.avatar_url || "/images/fernanda-portrait.svg"}
+                    alt={settings.professional_name}
+                    className="w-full h-full object-cover"
+                  />
+                  <span className="absolute inset-0 bg-navy/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-medium gap-1">
+                    <Camera className="w-5 h-5 text-gold" />
+                    Trocar foto
+                  </span>
+                </button>
+
+                <div className="flex-1 min-w-0 text-center sm:text-left space-y-2.5">
+                  <div>
+                    <p className="font-serif text-lg font-semibold text-navy">
+                      Foto de Perfil
+                    </p>
+                    <p className="text-xs text-slate leading-relaxed">
+                      Escolha uma foto do computador ou celular e ajuste o
+                      enquadramento (arrastar + zoom), como no WhatsApp. A foto
+                      aparece no site, agendamento, cursos e no painel.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap justify-center sm:justify-start gap-2">
+                    <button
+                      type="button"
+                      onClick={() => avatarInputRef.current?.click()}
+                      className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-terracotta hover:bg-terracotta-dark text-white text-xs font-semibold shadow-sm"
+                    >
+                      <Camera className="w-4 h-4" />
+                      <span>Escolher Nova Foto</span>
+                    </button>
+                    {settings.avatar_url && (
+                      <button
+                        type="button"
+                        onClick={() => setCropperSrc(settings.avatar_url)}
+                        className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white hover:bg-navy hover:text-white text-navy border border-offwhite-border text-xs font-semibold transition-colors"
+                      >
+                        <Crop className="w-4 h-4" />
+                        <span>Ajustar Recorte Atual</span>
+                      </button>
+                    )}
+                    {settings.avatar_url &&
+                      settings.avatar_url !== "/images/fernanda-portrait.svg" && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleConfirmCroppedAvatar(
+                              "/images/fernanda-portrait.svg"
+                            )
+                          }
+                          className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-slate hover:text-red-600 text-xs font-medium"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Restaurar padrão</span>
+                        </button>
+                      )}
+                  </div>
+                </div>
+              </div>
+
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleSelectAvatarFile}
+                className="hidden"
+              />
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-navy mb-1">
@@ -631,7 +763,7 @@ export default function AdminSiteEditorPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-navy mb-1">
                     Selo Superior (Hero Badge)
@@ -641,20 +773,6 @@ export default function AdminSiteEditorPage() {
                     value={settings.hero_badge}
                     onChange={(e) =>
                       setSettings({ ...settings, hero_badge: e.target.value })
-                    }
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-offwhite-border text-sm text-navy"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-navy mb-1">
-                    URL da Foto de Perfil
-                  </label>
-                  <input
-                    type="text"
-                    value={settings.avatar_url}
-                    onChange={(e) =>
-                      setSettings({ ...settings, avatar_url: e.target.value })
                     }
                     className="w-full px-3.5 py-2.5 rounded-xl border border-offwhite-border text-sm text-navy"
                   />
@@ -922,22 +1040,20 @@ export default function AdminSiteEditorPage() {
                     return (
                       <div
                         key={link.id}
-                        className={`p-3 rounded-2xl border flex items-center gap-3 text-left ${
-                          isPrimary
+                        className={`p-3 rounded-2xl border flex items-center gap-3 text-left ${isPrimary
                             ? "bg-terracotta text-white border-terracotta"
                             : isNavy
-                            ? "bg-navy text-offwhite border-gold/30"
-                            : "bg-white text-navy border-offwhite-border"
-                        }`}
+                              ? "bg-navy text-offwhite border-gold/30"
+                              : "bg-white text-navy border-offwhite-border"
+                          }`}
                       >
                         <div
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                            isPrimary
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isPrimary
                               ? "bg-white/20 text-white"
                               : isNavy
-                              ? "bg-white/10 text-gold"
-                              : "bg-navy/5 text-navy"
-                          }`}
+                                ? "bg-white/10 text-gold"
+                                : "bg-navy/5 text-navy"
+                            }`}
                         >
                           <DynamicIcon
                             name={link.icon_name}
@@ -966,6 +1082,25 @@ export default function AdminSiteEditorPage() {
           </span>
         </div>
       </div>
+
+      {/* MODAL DE RECORTE DA FOTO DE PERFIL */}
+      {cropperSrc && (
+        <AvatarCropperModal
+          isOpen={Boolean(cropperSrc)}
+          imageSrc={cropperSrc}
+          onClose={() => setCropperSrc(null)}
+          onConfirmCrop={handleConfirmCroppedAvatar}
+        />
+      )}
+
+      {/* MODAL DE RECORTE DA FOTO DE PERFIL */}
+      {cropperSrc && (
+        <AvatarCropperModal
+          imageSrc={cropperSrc}
+          onCancel={() => setCropperSrc(null)}
+          onConfirm={handleConfirmCroppedAvatar}
+        />
+      )}
 
       {/* MODAL DE CRIAÇÃO / EDIÇÃO DE BOTÃO */}
       {showLinkModal && (

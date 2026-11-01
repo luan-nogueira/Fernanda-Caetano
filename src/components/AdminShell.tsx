@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { AvatarCropperModal } from "@/components/AvatarCropperModal";
 import {
   LayoutDashboard,
   Calendar,
@@ -20,6 +21,7 @@ import {
   X,
   CheckCircle2,
   GraduationCap,
+  Camera,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -84,6 +86,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string>("/images/fernanda-portrait.svg");
+  const [cropperSrc, setCropperSrc] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isLoginPage = pathname === "/admin/login";
 
@@ -98,12 +103,62 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           router.replace("/admin/login");
         } else {
           setAuthChecked(true);
+          fetch("/api/admin/site")
+            .then((r) => r.json())
+            .then((data) => {
+              if (data?.settings?.avatar_url) {
+                setAvatarUrl(data.settings.avatar_url);
+              }
+            })
+            .catch(() => {});
         }
       })
       .catch(() => {
         router.replace("/admin/login");
       });
   }, [isLoginPage, router, pathname]);
+
+  useEffect(() => {
+    function handleAvatarEvent(e: Event) {
+      const custom = e as CustomEvent<string>;
+      if (custom.detail) {
+        setAvatarUrl(custom.detail);
+      }
+    }
+    window.addEventListener("fernanda-avatar-updated", handleAvatarEvent);
+    return () => {
+      window.removeEventListener("fernanda-avatar-updated", handleAvatarEvent);
+    };
+  }, []);
+
+  function handleSelectAvatarFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setCropperSrc(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+
+  async function handleSaveCroppedAvatar(croppedDataUrl: string) {
+    setAvatarUrl(croppedDataUrl);
+    setCropperSrc(null);
+    await fetch("/api/admin/site", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "update_avatar",
+        avatar_url: croppedDataUrl,
+      }),
+    });
+    window.dispatchEvent(
+      new CustomEvent("fernanda-avatar-updated", { detail: croppedDataUrl })
+    );
+  }
 
   if (isLoginPage) {
     return <>{children}</>;
@@ -124,8 +179,16 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <div className="relative w-24 h-24 flex items-center justify-center mb-4">
           <div className="absolute inset-0 rounded-full border border-dashed border-gold/40 animate-[spin_8s_linear_infinite]" />
           <div className="absolute inset-2 rounded-full border-2 border-transparent border-t-terracotta border-r-gold/60 animate-[spin_2s_ease-in-out_infinite]" />
-          <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-gold-dark to-gold flex items-center justify-center text-navy font-serif font-semibold text-base shadow-luxury">
-            FC
+          <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-gold-dark to-gold flex items-center justify-center text-navy font-serif font-semibold text-base shadow-luxury overflow-hidden">
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt="Dra. Fernanda Caetano"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              "FC"
+            )}
           </div>
         </div>
         <p className="font-serif text-base font-medium text-white tracking-wide">
@@ -147,6 +210,23 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-offwhite flex flex-col lg:flex-row">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleSelectAvatarFile}
+        className="hidden"
+      />
+
+      {cropperSrc && (
+        <AvatarCropperModal
+          isOpen={Boolean(cropperSrc)}
+          imageSrc={cropperSrc}
+          onClose={() => setCropperSrc(null)}
+          onConfirmCrop={handleSaveCroppedAvatar}
+        />
+      )}
+
       {/* Topbar Mobile */}
       <header className="lg:hidden sticky top-0 z-40 bg-navy text-offwhite px-4 h-16 flex items-center justify-between border-b border-gold/25">
         <div className="flex items-center gap-2.5">
@@ -162,6 +242,23 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <Menu className="w-5 h-5" />
             )}
           </button>
+
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            title="Alterar e recortar foto de perfil"
+            className="relative w-9 h-9 rounded-full border border-gold overflow-hidden shrink-0 group"
+          >
+            <img
+              src={avatarUrl || "/images/fernanda-portrait.svg"}
+              alt="Dra. Fernanda Caetano"
+              className="w-full h-full object-cover"
+            />
+            <span className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-terracotta text-white flex items-center justify-center">
+              <Camera className="w-2 h-2" />
+            </span>
+          </button>
+
           <div>
             <span className="font-serif text-lg font-semibold block leading-none">
               Fernanda Caetano
@@ -189,16 +286,36 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         } lg:sticky lg:top-0 lg:h-screen lg:w-72 lg:flex lg:flex-col bg-navy text-offwhite border-r border-gold/25 shrink-0 overflow-y-auto`}
       >
         <div className="hidden lg:flex items-center gap-3.5 px-6 py-6 border-b border-white/15">
-          <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-gold-dark to-gold flex items-center justify-center text-navy font-serif font-extrabold text-lg shadow-sm">
-            FC
-          </div>
-          <div>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            title="Clique para trocar e recortar sua foto de perfil (Estilo WhatsApp)"
+            className="relative w-12 h-12 rounded-full border-2 border-gold shadow-sm shrink-0 group overflow-visible"
+          >
+            <img
+              src={avatarUrl || "/images/fernanda-portrait.svg"}
+              alt="Dra. Fernanda Caetano"
+              className="w-full h-full rounded-full object-cover"
+            />
+            <span className="absolute inset-0 rounded-full bg-navy/65 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+              <Camera className="w-4 h-4 text-gold" />
+            </span>
+            <span className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-terracotta border-2 border-navy text-white flex items-center justify-center shadow">
+              <Camera className="w-2.5 h-2.5" />
+            </span>
+          </button>
+          <div className="min-w-0">
             <h1 className="font-serif text-xl font-bold text-white leading-tight tracking-tight">
               Fernanda Caetano
             </h1>
-            <p className="text-xs text-gold-light font-semibold">
-              Gestão de Consultório & Site
-            </p>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="text-[11px] text-gold-light hover:text-terracotta-light font-medium flex items-center gap-1 mt-0.5 transition-colors"
+            >
+              <Camera className="w-3 h-3" />
+              <span>Trocar foto de perfil</span>
+            </button>
           </div>
         </div>
 
