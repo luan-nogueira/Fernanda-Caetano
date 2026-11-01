@@ -1479,18 +1479,18 @@ function seedCoursesModuleIfNeeded(db: AppDatabase) {
     if (existingSettings) {
       db.prepare(
         `INSERT INTO custom_links (
-          id, title, subtitle, icon_name, link_type, destination,
-          style_variant, badge_text, is_active, display_order, created_at, updated_at
+          id, title, subtitle, icon_name, destination_type, destination_value,
+          style_variant, badge_text, is_active, sort_order, created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`
       ).run(
         "link-cursos",
-        "Cursos & Especializações",
-        "Área exclusiva de alunos e capacitações com a Dra. Fernanda Caetano",
+        "Cursos, Capacitações & Área de Alunos",
+        "Acesse as vídeo-aulas exclusivas ou conheça as formações da Dra. Fernanda",
         "GraduationCap",
         "internal_page",
         "/cursos",
-        "outline_gold",
-        "Área do Aluno",
+        "navy",
+        "ACADEMY",
         3,
         now,
         now

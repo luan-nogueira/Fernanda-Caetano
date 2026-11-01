@@ -361,14 +361,49 @@ export default function AdminSiteEditorPage() {
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={openNewLinkModal}
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-terracotta hover:bg-terracotta-dark text-white text-xs font-semibold shrink-0 shadow-sm"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Novo Botão</span>
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  {!links.some((l) => l.destination_value === "/cursos") && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await fetch("/api/admin/site", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            action: "create_link",
+                            title: "Cursos, Capacitações & Área de Alunos",
+                            subtitle:
+                              "Acesse as vídeo-aulas exclusivas ou conheça as formações da Dra. Fernanda",
+                            icon_name: "GraduationCap",
+                            destination_type: "internal_page",
+                            destination_value: "/cursos",
+                            whatsapp_message: "",
+                            style_variant: "navy",
+                            badge_text: "ACADEMY",
+                            is_active: true,
+                          }),
+                        });
+                        await loadEditorData();
+                        showSuccessToast(
+                          "Botão 'Cursos, Capacitações & Área de Alunos' adicionado à página inicial!"
+                        );
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-navy hover:bg-navy-800 text-gold border border-gold/40 text-xs font-semibold shrink-0 shadow-sm"
+                    >
+                      <Sparkles className="w-4 h-4 text-gold" />
+                      <span>+ Adicionar Botão de Cursos</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={openNewLinkModal}
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-terracotta hover:bg-terracotta-dark text-white text-xs font-semibold shrink-0 shadow-sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Novo Botão</span>
+                  </button>
+                </div>
               </div>
 
               {dragIndex !== null && links[dragIndex] && (
@@ -994,16 +1029,27 @@ export default function AdminSiteEditorPage() {
                         setLinkDestValue(units[0].slug);
                       if (nextType === "whatsapp")
                         setLinkDestValue("5522999990001");
-                      if (nextType === "internal_page")
-                        setLinkDestValue("/procedimentos");
+                      if (nextType === "internal_page") {
+                        setLinkDestValue("/cursos");
+                        if (!linkTitle) {
+                          setLinkTitle("Cursos, Capacitações & Área de Alunos");
+                          setLinkSubtitle(
+                            "Acesse as vídeo-aulas exclusivas ou conheça as formações da Dra. Fernanda"
+                          );
+                          setLinkBadge("ACADEMY");
+                          setLinkStyle("navy");
+                        }
+                      }
                     }}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-offwhite-border text-sm text-navy"
                   >
+                    <option value="internal_page">
+                      Página Interna (Cursos, Procedimentos, Sobre...)
+                    </option>
                     <option value="booking">Fluxo de Agendamento</option>
                     <option value="procedure">Procedimento Específico</option>
                     <option value="unit">Unidade de Atendimento</option>
                     <option value="whatsapp">WhatsApp com Mensagem</option>
-                    <option value="internal_page">Página Interna</option>
                     <option value="external_link">Link Externo (URL)</option>
                     <option value="section">Seção da Página</option>
                   </select>
@@ -1063,6 +1109,53 @@ export default function AdminSiteEditorPage() {
                         {u.name}
                       </option>
                     ))}
+                  </select>
+                </div>
+              ) : linkDestType === "internal_page" ? (
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold text-navy mb-1">
+                    Escolha a Página do Site
+                  </label>
+                  <select
+                    value={linkDestValue}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setLinkDestValue(val);
+                      if (val === "/cursos" && !editingLink) {
+                        setLinkTitle("Cursos, Capacitações & Área de Alunos");
+                        setLinkSubtitle(
+                          "Acesse as vídeo-aulas exclusivas ou conheça as formações da Dra. Fernanda"
+                        );
+                        setLinkBadge("ACADEMY");
+                        setLinkStyle("navy");
+                      } else if (val === "/cursos/login" && !editingLink) {
+                        setLinkTitle("Área do Aluno — Login");
+                        setLinkSubtitle(
+                          "Entre com seu e-mail e senha para assistir às vídeo-aulas"
+                        );
+                        setLinkBadge("ALUNOS");
+                      }
+                    }}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-offwhite-border text-sm font-semibold text-navy bg-offwhite/50"
+                  >
+                    <option value="/cursos">
+                      🎓 Portal de Cursos & Área de Alunos (/cursos)
+                    </option>
+                    <option value="/cursos/login">
+                      🔐 Login Direto da Área do Aluno (/cursos/login)
+                    </option>
+                    <option value="/procedimentos">
+                      ✨ Catálogo de Procedimentos (/procedimentos)
+                    </option>
+                    <option value="/unidades">
+                      📍 Unidades de Atendimento (/unidades)
+                    </option>
+                    <option value="/sobre">
+                      👩‍⚕️ Sobre a Profissional (/sobre)
+                    </option>
+                    <option value="/agendar">
+                      📅 Agendamento Online (/agendar)
+                    </option>
                   </select>
                 </div>
               ) : (

@@ -210,31 +210,40 @@ export async function pullAllTablesFromTurso(force = false): Promise<boolean> {
       db.exec("PRAGMA foreign_keys = ON;");
     }
 
-    if (!syncedTableNames.has("courses")) {
+    const hasCursosLinkSeeded = db
+      .prepare("SELECT id FROM site_sections WHERE id = 'cursos_link_seeded'")
+      .get();
+    if (!hasCursosLinkSeeded) {
       const existingLink = db
-        .prepare("SELECT id FROM custom_links WHERE id = 'link-cursos'")
+        .prepare(
+          "SELECT id FROM custom_links WHERE id = 'link-cursos' OR destination_value = '/cursos'"
+        )
         .get();
+      const now = new Date().toISOString();
       if (!existingLink) {
-        const now = new Date().toISOString();
         db.prepare(
           `INSERT INTO custom_links (
-            id, title, subtitle, icon_name, link_type, destination,
-            style_variant, badge_text, is_active, display_order, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`
+            id, title, subtitle, icon_name, destination_type, destination_value,
+            whatsapp_message, style_variant, badge_text, is_active, sort_order, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, '', ?, ?, 1, ?, ?, ?)`
         ).run(
           "link-cursos",
-          "Cursos & Especializações",
-          "Área exclusiva de alunos e capacitações com a Dra. Fernanda Caetano",
+          "Cursos, Capacitações & Área de Alunos",
+          "Acesse as vídeo-aulas exclusivas ou conheça as formações da Dra. Fernanda",
           "GraduationCap",
           "internal_page",
           "/cursos",
-          "outline_gold",
-          "Área do Aluno",
+          "navy",
+          "ACADEMY",
           3,
           now,
           now
         );
       }
+      db.prepare(
+        `INSERT OR REPLACE INTO site_sections (id, title, subtitle, is_visible, sort_order, updated_at)
+         VALUES ('cursos_link_seeded', 'seeded', '1', 0, 997, ?)`
+      ).run(now);
       await pushAllTablesToTurso();
     }
 
