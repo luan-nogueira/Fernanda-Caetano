@@ -77,35 +77,35 @@ export default async function ProcedimentosPage() {
                       className="bg-white rounded-2xl p-5 border border-offwhite-border shadow-card hover:shadow-luxury transition-all flex flex-col justify-between"
                     >
                       <div>
-                        <div className="flex items-center justify-between gap-2 mb-3">
-                          <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-navy/5 text-navy">
+                        <div className="flex items-center justify-between gap-3 mb-2.5">
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-terracotta">
                             {proc.modality === "domiciliar" ? (
                               <>
-                                <Home className="w-3.5 h-3.5 text-terracotta" />
+                                <Home className="w-3.5 h-3.5 text-terracotta shrink-0" />
                                 <span>Domiciliar (Home Care)</span>
                               </>
                             ) : (
                               <>
-                                <MapPin className="w-3.5 h-3.5 text-terracotta" />
+                                <MapPin className="w-3.5 h-3.5 text-terracotta shrink-0" />
                                 <span>Presencial em Consultório</span>
                               </>
                             )}
                           </span>
 
-                          <span className="inline-flex items-center gap-1 text-xs font-medium text-slate">
-                            <Clock className="w-3.5 h-3.5 text-gold-dark" />
+                          <span className="inline-flex items-center gap-1 text-xs font-normal text-slate shrink-0 whitespace-nowrap">
+                            <Clock className="w-3.5 h-3.5 text-gold-dark shrink-0" />
                             <span>{proc.duration_minutes} min</span>
                           </span>
                         </div>
 
                         <Link
                           href={`/procedimentos/${proc.slug}`}
-                          className="font-serif text-xl font-semibold text-navy hover:text-terracotta transition-colors block"
+                          className="font-serif text-lg font-medium text-navy hover:text-terracotta transition-colors leading-snug block"
                         >
                           {proc.name}
                         </Link>
 
-                        <p className="text-xs sm:text-sm text-slate mt-2 leading-relaxed">
+                        <p className="text-xs sm:text-sm font-normal text-slate/85 mt-2 leading-relaxed">
                           {proc.short_description}
                         </p>
 
