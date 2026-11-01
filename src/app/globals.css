@@ -14,11 +14,13 @@ html {
   scroll-behavior: smooth;
   background-color: #F7F5F1;
   color: #07152B;
+  overflow-x: hidden;
 }
 
 body {
   background-color: #F7F5F1;
   color: #07152B;
+  overflow-x: hidden;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   font-variant-numeric: lining-nums tabular-nums;
   -webkit-font-smoothing: antialiased;

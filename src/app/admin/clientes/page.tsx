@@ -129,8 +129,75 @@ export default function AdminClientesPage() {
         </span>
       </div>
 
-      {/* Tabela de Clientes */}
-      <div className="bg-white rounded-3xl p-6 border border-offwhite-border shadow-card overflow-x-auto">
+      {/* Lista de Clientes (Cards no Mobile + Tabela no Desktop) */}
+      <div className="bg-white rounded-3xl p-4 sm:p-6 border border-offwhite-border shadow-card">
+        <div className="md:hidden space-y-3">
+          {clients.map((c) => {
+            const waDigits = (c.whatsapp_phone || "").replace(/\D/g, "");
+            return (
+              <div
+                key={c.id}
+                className="p-4 rounded-2xl bg-offwhite/60 border border-offwhite-border space-y-2.5"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-bold text-navy text-sm">{c.full_name}</p>
+                    <p className="font-mono text-xs text-slate mt-0.5">
+                      {c.whatsapp_phone}
+                    </p>
+                    {c.email && (
+                      <p className="text-xs text-slate break-all">{c.email}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5 text-[11px]">
+                  <span className="px-2 py-0.5 rounded-full bg-navy/5 text-navy font-semibold">
+                    Total: {c.total_appointments || 0}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">
+                    Comparecimentos/Ativos: {c.completed_count || 0}
+                  </span>
+                  {(c.cancelled_count || 0) > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-800 font-semibold">
+                      Cancelados: {c.cancelled_count}
+                    </span>
+                  )}
+                </div>
+
+                {c.notes && (
+                  <p className="text-xs text-slate leading-relaxed bg-white p-2.5 rounded-xl border border-offwhite-border">
+                    {c.notes}
+                  </p>
+                )}
+
+                <div className="flex items-center gap-2 pt-2 border-t border-offwhite-border">
+                  {waDigits && (
+                    <a
+                      href={`https://wa.me/${waDigits}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>WhatsApp</span>
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => openEdit(c)}
+                    className="flex-1 inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl bg-white hover:bg-navy hover:text-white text-navy border border-offwhite-border text-xs font-semibold transition-colors"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Editar</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-left border-collapse text-xs sm:text-sm">
           <thead>
             <tr className="border-b border-offwhite-border text-[11px] uppercase tracking-wider text-slate">
@@ -172,7 +239,7 @@ export default function AdminClientesPage() {
                       )}
                     </div>
                   </td>
-                  <td className="py-3.5 px-3 text-xs text-slate max-w-xs truncate">
+                  <td className="py-3.5 px-3 text-xs text-slate max-w-xs leading-relaxed">
                     {c.notes || "—"}
                   </td>
                   <td className="py-3.5 px-3 text-right space-x-2 whitespace-nowrap">
@@ -201,6 +268,7 @@ export default function AdminClientesPage() {
             })}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Modal de Cliente */}

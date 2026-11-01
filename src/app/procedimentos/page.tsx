@@ -130,7 +130,7 @@ export default async function ProcedimentosPage() {
                         )}
                       </div>
 
-                      <div className="mt-5 pt-4 border-t border-offwhite-border flex items-center justify-between gap-3">
+                      <div className="mt-5 pt-4 border-t border-offwhite-border flex flex-wrap items-center justify-between gap-3">
                         <Link
                           href={`/procedimentos/${proc.slug}`}
                           className="text-xs font-semibold text-navy hover:text-terracotta transition-colors"

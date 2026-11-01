@@ -425,7 +425,7 @@ export default function AdminSiteEditorPage() {
                         setDragOverIndex(null);
                       }}
                       onDrop={() => handleDrop(index)}
-                      className={`relative p-4 rounded-2xl border-2 transition-all duration-300 flex items-center justify-between gap-3 select-none ${
+                      className={`relative p-4 rounded-2xl border-2 transition-all duration-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 select-none ${
                         isBeingDragged
                           ? "bg-terracotta/10 border-terracotta ring-4 ring-terracotta/25 scale-[0.98] shadow-luxury"
                           : isDropTarget
@@ -476,9 +476,9 @@ export default function AdminSiteEditorPage() {
                           />
                         </div>
 
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-sm font-bold text-navy truncate">
+                            <p className="text-sm font-bold text-navy leading-snug">
                               {link.title}
                             </p>
                             <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-navy/10 text-navy">
@@ -487,14 +487,14 @@ export default function AdminSiteEditorPage() {
                             </span>
                           </div>
                           {link.subtitle && (
-                            <p className="text-xs font-medium text-slate truncate mt-0.5">
+                            <p className="text-xs font-medium text-slate leading-relaxed mt-0.5">
                               {link.subtitle}
                             </p>
                           )}
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1 shrink-0">
+                      <div className="flex items-center justify-end gap-1.5 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-offwhite-border/60">
                         <button
                           type="button"
                           onClick={() => moveLink(index, -1)}
@@ -910,11 +910,11 @@ export default function AdminSiteEditorPage() {
                           />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold truncate">
+                          <p className="text-xs font-bold leading-snug">
                             {link.title}
                           </p>
                           {link.subtitle && (
-                            <p className="text-[10px] opacity-80 truncate">
+                            <p className="text-[10px] opacity-85 leading-relaxed mt-0.5">
                               {link.subtitle}
                             </p>
                           )}

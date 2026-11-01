@@ -61,12 +61,12 @@ export default async function HomePage({
           className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-[560px] h-[320px] rounded-full bg-gold/10 blur-3xl"
         />
 
-        <div className="relative max-w-xl mx-auto px-5">
+        <div className="relative max-w-xl sm:max-w-2xl lg:max-w-3xl mx-auto px-4 sm:px-6">
           {/* Top bar */}
-          <div className="flex items-center justify-between mb-6">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-gold/30 text-[11px] uppercase tracking-widest text-gold font-medium">
-              <Sparkles className="w-3 h-3 text-gold" />
-              {settings.hero_badge}
+          <div className="flex flex-wrap items-center justify-between gap-2.5 mb-6">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-gold/30 text-[10px] sm:text-[11px] uppercase tracking-widest text-gold font-medium max-w-full">
+              <Sparkles className="w-3 h-3 text-gold shrink-0" />
+              <span className="leading-snug">{settings.hero_badge}</span>
             </span>
             <ShareProfileButton title={settings.professional_name} />
           </div>
@@ -105,7 +105,7 @@ export default async function HomePage({
       </section>
 
       {/* CONTEÚDO PRINCIPAL ORDENADO DINAMICAMENTE PELAS SEÇÕES */}
-      <main className="flex-1 max-w-xl w-full mx-auto px-4 sm:px-5 -mt-6 pb-16 space-y-12 relative z-10">
+      <main className="flex-1 max-w-xl sm:max-w-2xl lg:max-w-3xl w-full mx-auto px-4 sm:px-6 -mt-6 pb-16 space-y-12 relative z-10">
         {visibleSections.map((section) => {
           // SEÇÃO 1: BOTÕES PRINCIPAIS DA PÁGINA PÚBLICA
           if (section.id === "links") {
@@ -174,7 +174,7 @@ export default async function HomePage({
                           </div>
                           {link.subtitle && (
                             <p
-                              className={`text-xs mt-0.5 line-clamp-1 ${subtitleClasses}`}
+                              className={`text-xs mt-0.5 leading-relaxed ${subtitleClasses}`}
                             >
                               {link.subtitle}
                             </p>
@@ -255,8 +255,8 @@ export default async function HomePage({
                       className="bg-white rounded-2xl p-5 border border-offwhite-border/80 shadow-card hover:shadow-luxury hover:border-gold/50 transition-all flex flex-col justify-between"
                     >
                       <div>
-                        <div className="flex items-center justify-between gap-3 mb-2.5">
-                          <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-terracotta truncate">
+                        <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+                          <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-terracotta leading-snug">
                             {proc.category_name || "Procedimento"}
                           </span>
                           <span className="inline-flex items-center gap-1 text-[11px] font-normal text-slate/80 shrink-0 whitespace-nowrap">
@@ -270,7 +270,7 @@ export default async function HomePage({
                         >
                           {proc.name}
                         </Link>
-                        <p className="text-xs font-normal text-slate/85 mt-2 line-clamp-2 leading-relaxed">
+                        <p className="text-xs font-normal text-slate/85 mt-2 leading-relaxed">
                           {proc.short_description}
                         </p>
                       </div>

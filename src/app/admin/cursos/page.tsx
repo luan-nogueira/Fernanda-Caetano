@@ -919,7 +919,131 @@ export default function AdminCursosPage() {
             </button>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Visão Mobile de Alunos (Cards Responsivos sem Rolagem Lateral) */}
+          <div className="md:hidden space-y-4">
+            {students.map((st) => {
+              const unlockedCourses = courses.filter((c) =>
+                st.enrolled_course_ids?.includes(c.id)
+              );
+              return (
+                <div
+                  key={st.id}
+                  className="p-4 rounded-2xl bg-offwhite/70 border border-offwhite-border space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-bold text-navy text-base">
+                        {st.full_name}
+                      </p>
+                      <p className="text-xs font-semibold text-slate">
+                        WhatsApp: {st.phone || "Não informado"}
+                      </p>
+                    </div>
+                    {st.is_active ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 text-[11px] font-bold shrink-0">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-700" />
+                        Liberado
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-100 text-red-900 border border-red-300 text-[11px] font-bold shrink-0">
+                        <XCircle className="w-3 h-3 text-red-700" />
+                        Bloqueado
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-white border border-offwhite-border space-y-1 text-xs">
+                    <p className="font-bold text-navy break-all">
+                      E-mail:{" "}
+                      <span className="font-mono text-terracotta">
+                        {st.email}
+                      </span>
+                    </p>
+                    <p className="font-bold text-slate">
+                      Senha:{" "}
+                      <span className="font-mono bg-offwhite px-2 py-0.5 rounded border border-offwhite-border text-navy">
+                        {st.password_plain_hint || "Curso@2026"}
+                      </span>
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5">
+                    {unlockedCourses.length === 0 ? (
+                      <span className="text-xs font-semibold text-red-700">
+                        Nenhum curso marcado
+                      </span>
+                    ) : (
+                      unlockedCourses.map((c) => (
+                        <span
+                          key={c.id}
+                          className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-navy/10 text-navy"
+                        >
+                          {c.title}
+                        </span>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-offwhite-border">
+                    <button
+                      type="button"
+                      onClick={() => handleSendCredentialsWhatsApp(st)}
+                      className="col-span-2 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Enviar Acesso no WhatsApp</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyCredentials(st)}
+                      className="inline-flex items-center justify-center gap-1 px-2.5 py-2 rounded-xl bg-white text-navy border border-offwhite-border text-xs font-bold"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copiar Dados</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStudentForm({
+                          id: st.id,
+                          full_name: st.full_name,
+                          email: st.email,
+                          phone: st.phone,
+                          password: st.password_plain_hint || "",
+                          expires_at: st.expires_at || "",
+                          notes: st.notes || "",
+                          is_active: Boolean(st.is_active),
+                          enrolled_course_ids: st.enrolled_course_ids || [],
+                        });
+                        setShowStudentModal(true);
+                      }}
+                      className="px-2.5 py-2 rounded-xl bg-white text-navy border border-offwhite-border text-xs font-bold"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleStudentActive(st)}
+                      className="px-2.5 py-2 rounded-xl bg-amber-50 text-amber-900 border border-amber-300 text-xs font-bold"
+                    >
+                      {st.is_active ? "Bloquear" : "Ativar"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteStudent(st.id)}
+                      className="inline-flex items-center justify-center gap-1 px-2.5 py-2 rounded-xl bg-red-50 text-red-600 border border-red-200 text-xs font-bold"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Excluir</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Visão Desktop em Tabela */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs sm:text-sm">
               <thead>
                 <tr className="border-b-2 border-offwhite-border text-xs font-bold uppercase tracking-wider text-navy bg-offwhite/70">
@@ -1124,10 +1248,10 @@ export default function AdminCursosPage() {
                       <Video className="w-5 h-5" />
                     </div>
                     <div className="min-w-0">
-                      <p className="font-bold text-navy text-sm truncate">
+                      <p className="font-bold text-navy text-sm break-all leading-snug">
                         {v.name}
                       </p>
-                      <p className="text-xs font-semibold text-slate">
+                      <p className="text-xs font-semibold text-slate mt-0.5">
                         Tamanho: {v.sizeMB} MB
                       </p>
                     </div>
