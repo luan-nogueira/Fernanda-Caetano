@@ -53,8 +53,23 @@ export default function AdminSiteEditorPage() {
   const [linkBadge, setLinkBadge] = useState("");
   const [linkActive, setLinkActive] = useState(true);
 
-  // Drag & Drop state
+  // Drag & Drop & Animation state
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [movedHighlight, setMovedHighlight] = useState<{
+    id: string;
+    toPosition: number;
+  } | null>(null);
+
+  const DEST_TYPE_LABELS: Record<string, string> = {
+    booking: "AGENDAMENTO",
+    internal_page: "PÁGINA INTERNA",
+    unit: "UNIDADE",
+    whatsapp: "WHATSAPP",
+    external_link: "LINK EXTERNO",
+    procedure: "PROCEDIMENTO",
+    section: "SEÇÃO DA PÁGINA",
+  };
 
   function showSuccessToast(msg: string) {
     setToast(msg);
@@ -175,21 +190,36 @@ export default function AdminSiteEditorPage() {
     showSuccessToast("Ordem dos botões atualizada!");
   }
 
+  function triggerMoveFeedback(id: string, toPosition: number) {
+    setMovedHighlight({ id, toPosition });
+    setTimeout(() => {
+      setMovedHighlight((prev) => (prev?.id === id ? null : prev));
+    }, 2200);
+  }
+
   function moveLink(index: number, direction: -1 | 1) {
     const target = index + direction;
     if (target < 0 || target >= links.length) return;
     const copy = [...links];
     const [removed] = copy.splice(index, 1);
     copy.splice(target, 0, removed);
+    triggerMoveFeedback(removed.id, target + 1);
     persistLinkOrder(copy);
   }
 
   function handleDrop(targetIndex: number) {
-    if (dragIndex === null || dragIndex === targetIndex) return;
+    if (dragIndex === null) return;
+    if (dragIndex === targetIndex) {
+      setDragIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
     const copy = [...links];
     const [moved] = copy.splice(dragIndex, 1);
     copy.splice(targetIndex, 0, moved);
     setDragIndex(null);
+    setDragOverIndex(null);
+    triggerMoveFeedback(moved.id, targetIndex + 1);
     persistLinkOrder(copy);
   }
 
@@ -341,106 +371,184 @@ export default function AdminSiteEditorPage() {
                 </button>
               </div>
 
-              <div className="space-y-2.5">
-                {links.map((link, index) => (
-                  <div
-                    key={link.id}
-                    draggable
-                    onDragStart={() => setDragIndex(index)}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={() => handleDrop(index)}
-                    className={`p-3.5 sm:p-4 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
-                      Boolean(link.is_active)
-                        ? "bg-offwhite/40 border-offwhite-border"
-                        : "bg-offwhite/20 border-dashed border-slate/30 opacity-60"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className="cursor-grab text-slate hover:text-navy"
-                        title="Arraste para reordenar"
-                      >
-                        <GripVertical className="w-4 h-4" />
-                      </div>
+              {dragIndex !== null && links[dragIndex] && (
+                <div className="p-3.5 rounded-2xl bg-navy text-white border-2 border-gold shadow-luxury flex items-center justify-between gap-3 animate-pulse">
+                  <div className="flex items-center gap-2.5 text-xs sm:text-sm font-bold">
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-terracotta text-white font-extrabold text-xs">
+                      ↕
+                    </span>
+                    <span>
+                      Movendo botão:{" "}
+                      <strong className="text-gold-light">
+                        &ldquo;{links[dragIndex].title}&rdquo;
+                      </strong>
+                    </span>
+                  </div>
+                  <span className="text-xs font-extrabold uppercase px-3 py-1 rounded-full bg-white/15 text-gold-light">
+                    {dragOverIndex !== null && dragOverIndex !== dragIndex
+                      ? `Soltar na ${dragOverIndex + 1}ª posição`
+                      : `Posição atual: ${dragIndex + 1}º`}
+                  </span>
+                </div>
+              )}
 
-                      <div className="w-10 h-10 rounded-xl bg-navy text-gold flex items-center justify-center shrink-0">
-                        <DynamicIcon
-                          name={link.icon_name}
-                          className="w-4 h-4"
-                        />
-                      </div>
+              <div className="space-y-3">
+                {links.map((link, index) => {
+                  const isBeingDragged = dragIndex === index;
+                  const isDropTarget =
+                    dragIndex !== null &&
+                    dragOverIndex === index &&
+                    dragIndex !== index;
+                  const wasJustMoved = movedHighlight?.id === link.id;
 
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-bold text-navy truncate">
-                            {link.title}
-                          </p>
-                          <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-navy/5 text-slate">
-                            {link.destination_type}
+                  return (
+                    <div
+                      key={link.id}
+                      draggable
+                      onDragStart={() => {
+                        setDragIndex(index);
+                        setDragOverIndex(index);
+                      }}
+                      onDragEnter={() => {
+                        if (dragIndex !== null && dragOverIndex !== index) {
+                          setDragOverIndex(index);
+                        }
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        if (dragIndex !== null && dragOverIndex !== index) {
+                          setDragOverIndex(index);
+                        }
+                      }}
+                      onDragEnd={() => {
+                        setDragIndex(null);
+                        setDragOverIndex(null);
+                      }}
+                      onDrop={() => handleDrop(index)}
+                      className={`relative p-4 rounded-2xl border-2 transition-all duration-300 flex items-center justify-between gap-3 select-none ${
+                        isBeingDragged
+                          ? "bg-terracotta/10 border-terracotta ring-4 ring-terracotta/25 scale-[0.98] shadow-luxury"
+                          : isDropTarget
+                          ? "bg-navy/10 border-navy ring-4 ring-gold/40 -translate-y-1 shadow-luxury"
+                          : wasJustMoved
+                          ? "bg-emerald-50 border-emerald-500 ring-4 ring-emerald-500/20 shadow-md"
+                          : Boolean(link.is_active)
+                          ? "bg-offwhite/60 border-offwhite-border hover:border-navy/40 shadow-sm"
+                          : "bg-offwhite/25 border-dashed border-slate/40 opacity-65"
+                      }`}
+                    >
+                      {isDropTarget && (
+                        <div className="absolute -top-3 left-4 px-3 py-0.5 rounded-full bg-navy text-gold-light text-[10px] font-extrabold uppercase tracking-wider shadow-md flex items-center gap-1">
+                          <span>⬇ Soltar aqui ({index + 1}º lugar)</span>
+                        </div>
+                      )}
+
+                      {isBeingDragged && (
+                        <div className="absolute -top-3 left-4 px-3 py-0.5 rounded-full bg-terracotta text-white text-[10px] font-extrabold uppercase tracking-wider shadow-md flex items-center gap-1 animate-bounce">
+                          <span>↔ Sendo movido...</span>
+                        </div>
+                      )}
+
+                      {wasJustMoved && (
+                        <div className="absolute -top-3 right-4 px-3 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-extrabold uppercase tracking-wider shadow-md flex items-center gap-1">
+                          <Check className="w-3 h-3" />
+                          <span>
+                            Movido para {movedHighlight?.toPosition}º lugar!
                           </span>
                         </div>
-                        {link.subtitle && (
-                          <p className="text-xs text-slate truncate">
-                            {link.subtitle}
-                          </p>
-                        )}
+                      )}
+
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className="cursor-grab active:cursor-grabbing p-1.5 rounded-lg bg-white border border-offwhite-border text-navy hover:bg-navy hover:text-gold transition-colors flex items-center gap-1"
+                          title="Clique e arraste para mover este botão"
+                        >
+                          <GripVertical className="w-4 h-4" />
+                          <span className="text-[11px] font-extrabold w-4 text-center">
+                            {index + 1}º
+                          </span>
+                        </div>
+
+                        <div className="w-10 h-10 rounded-xl bg-navy text-gold flex items-center justify-center shrink-0 shadow-sm">
+                          <DynamicIcon
+                            name={link.icon_name}
+                            className="w-4 h-4"
+                          />
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-bold text-navy truncate">
+                              {link.title}
+                            </p>
+                            <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-navy/10 text-navy">
+                              {DEST_TYPE_LABELS[link.destination_type] ||
+                                link.destination_type}
+                            </span>
+                          </div>
+                          {link.subtitle && (
+                            <p className="text-xs font-medium text-slate truncate mt-0.5">
+                              {link.subtitle}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => moveLink(index, -1)}
+                          disabled={index === 0}
+                          className="p-2 rounded-lg bg-white hover:bg-navy hover:text-white text-navy border border-offwhite-border disabled:opacity-30 transition-colors"
+                          title="Subir posição"
+                        >
+                          <ArrowUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveLink(index, 1)}
+                          disabled={index === links.length - 1}
+                          className="p-2 rounded-lg bg-white hover:bg-navy hover:text-white text-navy border border-offwhite-border disabled:opacity-30 transition-colors"
+                          title="Descer posição"
+                        >
+                          <ArrowDown className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleLinkVisibility(link)}
+                          className="p-2 rounded-lg bg-white hover:bg-offwhite text-navy border border-offwhite-border transition-colors"
+                          title={
+                            Boolean(link.is_active)
+                              ? "Ocultar botão"
+                              : "Exibir botão"
+                          }
+                        >
+                          {Boolean(link.is_active) ? (
+                            <Eye className="w-4 h-4 text-emerald-600" />
+                          ) : (
+                            <EyeOff className="w-4 h-4 text-slate" />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openEditLinkModal(link)}
+                          className="p-2 rounded-lg bg-white hover:bg-navy hover:text-white text-navy border border-offwhite-border transition-colors"
+                          title="Editar botão"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteLink(link)}
+                          className="p-2 rounded-lg bg-red-50 hover:bg-red-600 hover:text-white text-red-600 border border-red-200 transition-colors"
+                          title="Excluir botão"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => moveLink(index, -1)}
-                        disabled={index === 0}
-                        className="p-1.5 rounded-lg hover:bg-white text-slate disabled:opacity-30"
-                        title="Subir"
-                      >
-                        <ArrowUp className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => moveLink(index, 1)}
-                        disabled={index === links.length - 1}
-                        className="p-1.5 rounded-lg hover:bg-white text-slate disabled:opacity-30"
-                        title="Descer"
-                      >
-                        <ArrowDown className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleToggleLinkVisibility(link)}
-                        className="p-1.5 rounded-lg hover:bg-white text-slate hover:text-navy"
-                        title={
-                          Boolean(link.is_active)
-                            ? "Ocultar botão"
-                            : "Exibir botão"
-                        }
-                      >
-                        {Boolean(link.is_active) ? (
-                          <Eye className="w-4 h-4 text-emerald-600" />
-                        ) : (
-                          <EyeOff className="w-4 h-4 text-slate" />
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openEditLinkModal(link)}
-                        className="p-1.5 rounded-lg hover:bg-white text-navy"
-                        title="Editar botão"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteLink(link)}
-                        className="p-1.5 rounded-lg hover:bg-red-50 text-red-600"
-                        title="Excluir botão"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
