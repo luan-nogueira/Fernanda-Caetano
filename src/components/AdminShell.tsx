@@ -120,11 +120,30 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   if (!authChecked) {
     return (
-      <div className="min-h-screen bg-offwhite flex items-center justify-center text-navy text-sm font-medium">
-        Carregando Central de Gestão...
+      <div className="min-h-screen bg-navy text-white flex flex-col items-center justify-center p-6 select-none">
+        <div className="relative w-24 h-24 flex items-center justify-center mb-4">
+          <div className="absolute inset-0 rounded-full border border-dashed border-gold/40 animate-[spin_8s_linear_infinite]" />
+          <div className="absolute inset-2 rounded-full border-2 border-transparent border-t-terracotta border-r-gold/60 animate-[spin_2s_ease-in-out_infinite]" />
+          <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-gold-dark to-gold flex items-center justify-center text-navy font-serif font-semibold text-base shadow-luxury">
+            FC
+          </div>
+        </div>
+        <p className="font-serif text-base font-medium text-white tracking-wide">
+          Dra. Fernanda Caetano
+        </p>
+        <span className="text-[11px] uppercase tracking-[0.22em] text-gold-light mt-1">
+          Iniciando Central Clínica...
+        </span>
       </div>
     );
   }
+
+  const todayFormatted = new Intl.DateTimeFormat("pt-BR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(new Date());
 
   return (
     <div className="min-h-screen bg-offwhite flex flex-col lg:flex-row">
@@ -250,9 +269,43 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Área de Conteúdo */}
-      <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
-        {children}
-      </main>
+      <div className="flex-1 min-w-0 flex flex-col">
+        {/* Topbar Executiva Desktop */}
+        <div className="hidden lg:flex items-center justify-between px-8 py-3.5 bg-white/80 backdrop-blur-md border-b border-offwhite-border/80 sticky top-0 z-20">
+          <div className="flex items-center gap-3 text-xs text-slate">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 font-medium text-[11px]">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Sistema Clínico Ativo & Sincronizado</span>
+            </span>
+            <span className="text-offwhite-border">•</span>
+            <span className="capitalize font-normal text-slate/90">
+              {todayFormatted}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <Link
+              href="/admin/cursos"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-offwhite hover:bg-navy hover:text-white text-navy text-xs font-medium transition-colors"
+            >
+              <GraduationCap className="w-3.5 h-3.5 text-terracotta" />
+              <span>Cursos & Alunos</span>
+            </Link>
+            <Link
+              href="/cursos"
+              target="_blank"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-offwhite hover:bg-navy hover:text-white text-navy text-xs font-medium transition-colors"
+            >
+              <span>Área do Aluno</span>
+              <ExternalLink className="w-3 h-3 text-gold-dark" />
+            </Link>
+          </div>
+        </div>
+
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }
