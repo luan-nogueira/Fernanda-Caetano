@@ -70,12 +70,28 @@ export async function GET() {
         .map((e) => e.course_id),
     }));
 
+    const headerRow = db
+      .prepare("SELECT * FROM site_sections WHERE id = 'courses_page_header'")
+      .get() as
+      | { id: string; title: string; subtitle: string; is_visible: number }
+      | undefined;
+
+    const pageHeader = {
+      badge: "Academy • Dra. Fernanda Caetano",
+      title:
+        headerRow?.title || "Cursos, Capacitações & Área de Alunos",
+      subtitle:
+        headerRow?.subtitle ||
+        "Formações técnicas e práticas em Enfermagem Dermatológica, Manejo Avançado de Feridas, Laserterapia e Estética Avançada.",
+    };
+
     return NextResponse.json({
       courses,
       lessons,
       students: studentsWithEnrollments,
       localVideoFiles: listLocalVideoFiles(),
       videosFolderPath: VIDEOS_DIR,
+      pageHeader,
     });
   } catch (err) {
     if (err instanceof Error && err.message === "UNAUTHORIZED") {
@@ -95,6 +111,22 @@ export async function POST(req: NextRequest) {
     const db = getDb();
     const body = await req.json();
     const now = new Date().toISOString();
+
+    // 0. Salvar Cabeçalho da Página de Cursos
+    if (body.action === "save_page_header") {
+      db.prepare(
+        `INSERT INTO site_sections (id, title, subtitle, is_visible, display_order)
+         VALUES ('courses_page_header', ?, ?, 0, 99)
+         ON CONFLICT(id) DO UPDATE SET
+           title = excluded.title,
+           subtitle = excluded.subtitle`
+      ).run(
+        body.title || "Cursos, Capacitações & Área de Alunos",
+        body.subtitle || ""
+      );
+      await pushAllTablesToTurso();
+      return NextResponse.json({ success: true });
+    }
 
     // 1. Criar ou Atualizar Curso
     if (body.action === "save_course") {

@@ -43,6 +43,13 @@ export default function AdminCursosPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
+  // Form Cabeçalho da Página de Cursos
+  const [pageHeaderForm, setPageHeaderForm] = useState({
+    title: "Cursos, Capacitações & Área de Alunos",
+    subtitle:
+      "Formações técnicas e práticas em Enfermagem Dermatológica, Manejo Avançado de Feridas, Laserterapia e Estética Avançada.",
+  });
+
   // Form Curso
   const [courseForm, setCourseForm] = useState({
     id: "",
@@ -107,8 +114,29 @@ export default function AdminCursosPage() {
       if (data.students) setStudents(data.students);
       if (data.localVideoFiles) setLocalVideos(data.localVideoFiles);
       if (data.videosFolderPath) setVideosFolderPath(data.videosFolderPath);
+      if (data.pageHeader) {
+        setPageHeaderForm({
+          title: data.pageHeader.title || "Cursos, Capacitações & Área de Alunos",
+          subtitle: data.pageHeader.subtitle || "",
+        });
+      }
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleSavePageHeader(e: React.FormEvent) {
+    e.preventDefault();
+    const res = await fetch("/api/admin/cursos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "save_page_header",
+        ...pageHeaderForm,
+      }),
+    });
+    if (res.ok) {
+      showNotification("Textos do topo da página de Cursos atualizados!");
     }
   }
 
@@ -405,12 +433,72 @@ export default function AdminCursosPage() {
 
       {/* ABA 1: CURSOS E AULAS */}
       {activeTab === "courses" && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="space-y-6">
+          {/* Editor do Cabeçalho da Página Pública de Cursos */}
+          <form
+            onSubmit={handleSavePageHeader}
+            className="bg-white rounded-3xl p-5 sm:p-6 border border-offwhite-border shadow-card space-y-4"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-terracotta block">
+                  Cabeçalho da Página Pública (/cursos)
+                </span>
+                <h2 className="font-serif text-lg sm:text-xl font-medium text-navy">
+                  Personalizar Título e Descrição da Página de Cursos
+                </h2>
+              </div>
+              <button
+                type="submit"
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-navy hover:bg-terracotta text-white text-xs font-medium transition-colors shrink-0"
+              >
+                <CheckCircle2 className="w-4 h-4 text-gold" />
+                <span>Salvar Textos do Topo</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-navy mb-1">
+                  Título Principal da Página de Cursos
+                </label>
+                <input
+                  type="text"
+                  value={pageHeaderForm.title}
+                  onChange={(e) =>
+                    setPageHeaderForm({
+                      ...pageHeaderForm,
+                      title: e.target.value,
+                    })
+                  }
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-offwhite-border text-sm text-navy"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-navy mb-1">
+                  Subtítulo Institucional
+                </label>
+                <input
+                  type="text"
+                  value={pageHeaderForm.subtitle}
+                  onChange={(e) =>
+                    setPageHeaderForm({
+                      ...pageHeaderForm,
+                      subtitle: e.target.value,
+                    })
+                  }
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-offwhite-border text-sm text-navy"
+                />
+              </div>
+            </div>
+          </form>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Lista de Cursos */}
           <div className="lg:col-span-5 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="font-serif text-2xl font-bold text-navy">
-                Cursos Cadastrados
+              <h2 className="font-serif text-2xl font-medium text-navy">
+                Cursos & Valores
               </h2>
               <button
                 type="button"
@@ -427,7 +515,7 @@ export default function AdminCursosPage() {
                   });
                   setShowCourseModal(true);
                 }}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-terracotta hover:bg-terracotta-dark text-white text-xs font-bold shadow-sm"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-terracotta hover:bg-terracotta-dark text-white text-xs font-medium shadow-sm"
               >
                 <Plus className="w-4 h-4" />
                 <span>Novo Curso</span>
@@ -435,7 +523,7 @@ export default function AdminCursosPage() {
             </div>
 
             {loading ? (
-              <p className="text-sm font-semibold text-navy">
+              <p className="text-sm font-medium text-navy">
                 Carregando cursos...
               </p>
             ) : (
@@ -458,24 +546,35 @@ export default function AdminCursosPage() {
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <span
-                            className={`inline-block text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full mb-2 ${
-                              course.is_active
-                                ? isSelected
-                                  ? "bg-emerald-500/25 text-emerald-200"
-                                  : "bg-emerald-100 text-emerald-900"
-                                : "bg-red-100 text-red-800"
-                            }`}
-                          >
-                            {course.is_active ? "Curso Ativo" : "Oculto"} •{" "}
-                            {count} aulas
-                          </span>
-                          <h3 className="font-serif text-xl font-bold leading-snug">
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
+                            <span
+                              className={`inline-block text-[10px] font-semibold uppercase px-2.5 py-0.5 rounded-full ${
+                                course.is_active
+                                  ? isSelected
+                                    ? "bg-emerald-500/25 text-emerald-200"
+                                    : "bg-emerald-100 text-emerald-900"
+                                  : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {course.is_active ? "Curso Ativo" : "Oculto"} •{" "}
+                              {count} aulas
+                            </span>
+                            <span
+                              className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
+                                isSelected
+                                  ? "bg-gold/20 text-gold-light"
+                                  : "bg-terracotta/10 text-terracotta"
+                              }`}
+                            >
+                              Valor: {course.price_display}
+                            </span>
+                          </div>
+                          <h3 className="font-serif text-lg sm:text-xl font-medium leading-snug">
                             {course.title}
                           </h3>
                           <p
-                            className={`text-xs font-medium mt-1 ${
-                              isSelected ? "text-white/85" : "text-slate"
+                            className={`text-xs mt-1 ${
+                              isSelected ? "text-white/80" : "text-slate"
                             }`}
                           >
                             {course.subtitle}
@@ -483,14 +582,14 @@ export default function AdminCursosPage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between mt-4 pt-3 border-t border-current/10 text-xs font-bold">
-                        <span>
-                          {course.workload_hours} • {course.price_display}
+                      <div
+                        className="flex flex-wrap items-center justify-between gap-2 mt-4 pt-3 border-t border-current/10 text-xs"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <span className="opacity-85">
+                          {course.workload_hours}
                         </span>
-                        <div
-                          className="flex items-center gap-2"
-                          onClick={(e) => e.stopPropagation()}
-                        >
+                        <div className="flex items-center gap-2">
                           <button
                             type="button"
                             onClick={() => {
@@ -507,14 +606,14 @@ export default function AdminCursosPage() {
                               });
                               setShowCourseModal(true);
                             }}
-                            className={`p-1.5 rounded-lg ${
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-medium transition-colors ${
                               isSelected
-                                ? "bg-white/15 hover:bg-white/25 text-white"
-                                : "bg-offwhite hover:bg-navy hover:text-white text-navy"
+                                ? "bg-terracotta hover:bg-terracotta-dark text-white"
+                                : "bg-navy hover:bg-terracotta text-white"
                             }`}
-                            title="Editar Curso"
                           >
                             <Edit3 className="w-3.5 h-3.5" />
+                            <span>Editar Valor e Textos</span>
                           </button>
                           <button
                             type="button"
@@ -684,6 +783,7 @@ export default function AdminCursosPage() {
                 Selecione um curso ao lado para gerenciar suas aulas.
               </p>
             )}
+          </div>
           </div>
         </div>
       )}
@@ -1015,7 +1115,7 @@ export default function AdminCursosPage() {
               </div>
               <div>
                 <label className="block text-xs font-bold uppercase text-navy mb-1">
-                  Valor de Exibição
+                  Valor / Investimento Exibido
                 </label>
                 <input
                   type="text"
@@ -1026,10 +1126,28 @@ export default function AdminCursosPage() {
                       price_display: e.target.value,
                     })
                   }
-                  placeholder="Ex.: R$ 497,00 ou Sob consulta"
+                  placeholder="Ex.: R$ 497,00, 12x de R$ 49,70 ou Sob consulta"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-offwhite-border text-sm font-semibold text-navy"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase text-navy mb-1">
+                Mensagem Automática de Compra no WhatsApp
+              </label>
+              <input
+                type="text"
+                value={courseForm.whatsapp_interest_message}
+                onChange={(e) =>
+                  setCourseForm({
+                    ...courseForm,
+                    whatsapp_interest_message: e.target.value,
+                  })
+                }
+                placeholder="Ex.: Olá Dra. Fernanda! Quero adquirir acesso ao curso..."
+                className="w-full px-3.5 py-2.5 rounded-xl border border-offwhite-border text-sm font-medium text-navy"
+              />
             </div>
 
             <label className="flex items-center gap-2 text-sm font-bold text-navy pt-1">

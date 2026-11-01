@@ -14,10 +14,16 @@ import {
   MessageCircle,
   KeyRound,
   Video,
+  Edit3,
 } from "lucide-react";
 
 export default function CursosCatalogPage() {
   const [courses, setCourses] = useState<Course[]>([]);
+  const [pageHeader, setPageHeader] = useState({
+    title: "Cursos, Capacitações & Área de Alunos",
+    subtitle:
+      "Formações técnicas e práticas em Enfermagem Dermatológica, Manejo Avançado de Feridas, Laserterapia e Estética Avançada.",
+  });
   const [enrolledIds, setEnrolledIds] = useState<string[]>([]);
   const [student, setStudent] = useState<{
     id: string;
@@ -33,6 +39,7 @@ export default function CursosCatalogPage() {
       const res = await fetch("/api/cursos/catalog");
       const data = await res.json();
       if (data.courses) setCourses(data.courses);
+      if (data.pageHeader) setPageHeader(data.pageHeader);
       if (data.enrolledCourseIds) setEnrolledIds(data.enrolledCourseIds);
       if (data.student) setStudent(data.student);
       if (data.isAdminPreview) setIsAdminPreview(true);
@@ -71,8 +78,8 @@ export default function CursosCatalogPage() {
             </Link>
 
             {student || isAdminPreview ? (
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/10 border border-gold/40 text-xs font-bold text-white">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <span className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/10 border border-gold/40 text-xs font-medium text-white">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                   <span>
                     {student
@@ -80,11 +87,20 @@ export default function CursosCatalogPage() {
                       : "Visualização da Dra. Fernanda (Admin)"}
                   </span>
                 </span>
+                {isAdminPreview && (
+                  <Link
+                    href="/admin/cursos"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-terracotta hover:bg-terracotta-dark text-white text-xs font-medium shadow-sm transition-colors"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Editar Valores e Cursos no Painel</span>
+                  </Link>
+                )}
                 {student && (
                   <button
                     type="button"
                     onClick={handleStudentLogout}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-200 text-xs font-bold"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-200 text-xs font-medium"
                   >
                     <LogOut className="w-3.5 h-3.5" />
                     <span>Sair</span>
@@ -94,7 +110,7 @@ export default function CursosCatalogPage() {
             ) : (
               <Link
                 href="/cursos/login"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-terracotta hover:bg-terracotta-dark text-white text-xs sm:text-sm font-bold shadow-sm transition-all"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-terracotta hover:bg-terracotta-dark text-white text-xs sm:text-sm font-medium shadow-sm transition-all"
               >
                 <KeyRound className="w-4 h-4" />
                 <span>Já sou Aluno — Entrar com E-mail e Senha</span>
@@ -103,16 +119,15 @@ export default function CursosCatalogPage() {
           </div>
 
           <div className="max-w-3xl space-y-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gold/20 border border-gold/40 text-gold-light text-xs font-extrabold uppercase tracking-widest">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gold/20 border border-gold/40 text-gold-light text-[11px] font-medium uppercase tracking-[0.2em]">
               <GraduationCap className="w-4 h-4" />
               <span>Academy • Dra. Fernanda Caetano</span>
             </span>
-            <h1 className="font-serif text-3xl sm:text-5xl font-bold text-white tracking-tight">
-              Cursos, Capacitações & Área de Alunos
+            <h1 className="font-serif text-3xl sm:text-4xl font-medium text-white tracking-tight">
+              {pageHeader.title}
             </h1>
-            <p className="text-sm sm:text-base font-medium text-white/90">
-              Formações técnicas e práticas em Enfermagem Dermatológica, Manejo
-              Avançado de Feridas, Laserterapia e Estética Avançada.
+            <p className="text-sm sm:text-base font-normal text-white/85">
+              {pageHeader.subtitle}
             </p>
           </div>
         </div>
@@ -205,16 +220,26 @@ export default function CursosCatalogPage() {
                         </span>
                       </Link>
 
-                      {!isUnlocked && (
+                      {!isUnlocked ? (
                         <a
                           href={waUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-terracotta hover:bg-terracotta-dark text-white text-xs sm:text-sm font-bold shadow-sm transition-all"
+                          className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-terracotta hover:bg-terracotta-dark text-white text-xs sm:text-sm font-medium shadow-sm transition-all"
                         >
                           <MessageCircle className="w-4 h-4" />
                           <span>Adquirir Acesso</span>
                         </a>
+                      ) : (
+                        isAdminPreview && (
+                          <Link
+                            href="/admin/cursos"
+                            className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-offwhite hover:bg-terracotta hover:text-white text-navy border border-offwhite-border text-xs sm:text-sm font-medium transition-all"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                            <span>Editar Valor / Textos</span>
+                          </Link>
+                        )
                       )}
                     </div>
                   </div>

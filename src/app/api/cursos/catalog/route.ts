@@ -102,8 +102,22 @@ export async function GET(req: NextRequest) {
       };
     });
 
+    const headerRow = db
+      .prepare("SELECT * FROM site_sections WHERE id = 'courses_page_header'")
+      .get() as
+      | { id: string; title: string; subtitle: string }
+      | undefined;
+
+    const pageHeader = {
+      title: headerRow?.title || "Cursos, Capacitações & Área de Alunos",
+      subtitle:
+        headerRow?.subtitle ||
+        "Formações técnicas e práticas em Enfermagem Dermatológica, Manejo Avançado de Feridas, Laserterapia e Estética Avançada.",
+    };
+
     return NextResponse.json({
       courses: coursesWithCounts,
+      pageHeader,
       enrolledCourseIds,
       completedLessonIds,
       isAdminPreview: Boolean(adminSession && !studentSession),
