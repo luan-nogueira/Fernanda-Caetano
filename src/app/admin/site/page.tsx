@@ -243,7 +243,7 @@ export default function AdminSiteEditorPage() {
             Personalização Sem Código
           </span>
           <h1 className="font-serif text-3xl sm:text-4xl font-semibold text-navy">
-            Editor da Página Pública (Linktree Premium)
+            Editor da Página Pública
           </h1>
           <p className="text-xs sm:text-sm text-slate mt-0.5">
             Gerencie botões, destinos, textos, foto de perfil e ordem das seções
@@ -293,7 +293,7 @@ export default function AdminSiteEditorPage() {
       <div className="flex flex-wrap items-center gap-2 border-b border-offwhite-border pb-3">
         {(
           [
-            { id: "links", label: "1. Botões Principais (Linktree)" },
+            { id: "links", label: "1. Botões Principais da Página" },
             { id: "profile", label: "2. Perfil, Bio, Cores & Textos" },
             { id: "sections", label: "3. Ordem e Visibilidade das Seções" },
           ] as const

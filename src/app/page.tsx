@@ -107,7 +107,7 @@ export default async function HomePage({
       {/* CONTEÚDO PRINCIPAL ORDENADO DINAMICAMENTE PELAS SEÇÕES */}
       <main className="flex-1 max-w-xl w-full mx-auto px-4 sm:px-5 -mt-6 pb-16 space-y-12 relative z-10">
         {visibleSections.map((section) => {
-          // SEÇÃO 1: BOTÕES ESTILO LINKTREE PREMIUM
+          // SEÇÃO 1: BOTÕES PRINCIPAIS DA PÁGINA PÚBLICA
           if (section.id === "links") {
             return (
               <section key={section.id} id="links" className="space-y-3">

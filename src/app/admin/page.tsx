@@ -96,7 +96,7 @@ export default function AdminDashboardPage() {
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-navy hover:bg-navy-800 text-offwhite text-xs sm:text-sm font-semibold transition-all"
           >
             <Palette className="w-4 h-4 text-gold" />
-            <span>Editar Linktree</span>
+            <span>Editar Página Pública</span>
           </Link>
         </div>
       </div>

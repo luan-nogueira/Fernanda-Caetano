@@ -6,7 +6,7 @@ Aplicação web full-stack desenvolvida sob medida para **Fernanda Caetano — E
 
 ## 1. Visão Geral dos Módulos Implementados
 
-1. **Página Pública Estilo Linktree Premium (`/`)**:
+1. **Página Pública Exclusiva (`/`)**:
    - Design sofisticado com a paleta oficial (`#07152B` Azul-marinho profundo, `#D97732` Laranja sofisticado, `#F7F5F1` Off-white, `#C5A46D` Dourado discreto e `#64748B` Cinza auxiliar).
    - Tipografia combinando `Cormorant Garamond` (títulos) e `Inter` (interface e leitura).
    - Cabeçalho com foto/monograma profissional, selo de especialidades, botão de compartilhamento e botões 100% dinâmicos persistidos no banco de dados.
@@ -20,7 +20,7 @@ Aplicação web full-stack desenvolvida sob medida para **Fernanda Caetano — E
 5. **Central Administrativa (`/admin`)**:
    - **Dashboard (`/admin`)**: Indicadores em tempo real, solicitações aguardando aprovação e status do Bot de WhatsApp.
    - **Agenda de Atendimentos (`/admin/agenda`)**: Calendário inteligente com visualizações **Dia / Semana / Mês** e painel lateral diário (incluindo os dados de demonstração em **12 de novembro de 2026** com Mariana Silva, Ana Costa e Juliana Martins), filtros, confirmação em 1 clique, reagendamento e bloqueio de dia/horário.
-   - **Editor da Página Pública (`/admin/site`)**: Criação, edição, ocultação, exclusão e reordenação (drag-and-drop ou setas) dos botões do Linktree, edição de perfil/bio/cores, modo **Salvar Rascunho**, **Pré-visualização** (`/?preview=1`) e **Publicar Alterações** com simulador de smartphone ao vivo.
+   - **Editor da Página Pública (`/admin/site`)**: Criação, edição, ocultação, exclusão e reordenação (drag-and-drop ou setas) dos botões da página inicial, edição de perfil/bio/cores, modo **Salvar Rascunho**, **Pré-visualização** (`/?preview=1`) e **Publicar Alterações** com simulador de smartphone ao vivo.
    - **WhatsApp Bot & QR Code (`/admin/whatsapp`)**: Inspirado no bot da barbearia em Baileys, com geração de QR Code na tela para a Dra. Fernanda conectar seu aparelho, templates editáveis com variáveis dinâmicas para **Cliente** e **Profissional**, disparo automático e histórico de mensagens enviadas.
 
 ---

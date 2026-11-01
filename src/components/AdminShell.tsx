@@ -33,7 +33,6 @@ const NAV_ITEMS = [
     href: "/admin/site",
     label: "Editor da Página Pública",
     icon: Palette,
-    badge: "Linktree",
   },
   {
     href: "/admin/whatsapp",
