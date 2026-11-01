@@ -147,17 +147,22 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   async function handleSaveCroppedAvatar(croppedDataUrl: string) {
     setAvatarUrl(croppedDataUrl);
     setCropperSrc(null);
-    await fetch("/api/admin/site", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "update_avatar",
-        avatar_url: croppedDataUrl,
-      }),
-    });
-    window.dispatchEvent(
-      new CustomEvent("fernanda-avatar-updated", { detail: croppedDataUrl })
-    );
+    try {
+      await fetch("/api/admin/site", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "update_avatar",
+          avatar_url: croppedDataUrl,
+          avatarUrl: croppedDataUrl,
+        }),
+      });
+      window.dispatchEvent(
+        new CustomEvent("fernanda-avatar-updated", { detail: croppedDataUrl })
+      );
+    } catch (e) {
+      console.error("Erro ao salvar foto de perfil:", e);
+    }
   }
 
   if (isLoginPage) {

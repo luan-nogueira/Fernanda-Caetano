@@ -36,15 +36,23 @@ export default function AdminConfiguracoesPage() {
     setSettings((prev) =>
       prev ? { ...prev, avatar_url: croppedDataUrl } : prev
     );
-    await fetch("/api/admin/site", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "update_avatar", avatar_url: croppedDataUrl }),
-    });
-    window.dispatchEvent(
-      new CustomEvent("fernanda-avatar-updated", { detail: croppedDataUrl })
-    );
-    notify("Foto de perfil atualizada em todo o site e painel!");
+    try {
+      await fetch("/api/admin/site", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "update_avatar",
+          avatar_url: croppedDataUrl,
+          avatarUrl: croppedDataUrl,
+        }),
+      });
+      window.dispatchEvent(
+        new CustomEvent("fernanda-avatar-updated", { detail: croppedDataUrl })
+      );
+      notify("Foto de perfil atualizada em todo o site e painel!");
+    } catch (e) {
+      console.error("Erro ao atualizar foto:", e);
+    }
   }
 
   useEffect(() => {
