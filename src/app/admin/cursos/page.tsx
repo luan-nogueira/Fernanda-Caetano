@@ -1502,3 +1502,4 @@ export default function AdminCursosPage() {
     </div>
   );
 }
+

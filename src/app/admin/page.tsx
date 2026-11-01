@@ -96,13 +96,13 @@ export default function AdminDashboardPage() {
       {/* Cabeçalho */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white rounded-3xl p-6 border border-offwhite-border shadow-card">
         <div>
-          <span className="inline-block text-xs font-extrabold uppercase tracking-widest text-terracotta mb-1">
+          <span className="inline-block text-[11px] font-semibold uppercase tracking-[0.18em] text-terracotta mb-1">
             Visão Geral da Clínica
           </span>
-          <h1 className="font-serif text-3xl sm:text-4xl font-bold text-navy tracking-tight">
+          <h1 className="font-serif text-2xl sm:text-3xl font-semibold text-navy tracking-tight">
             Central de Gestão — Dra. Fernanda Caetano
           </h1>
-          <p className="text-sm font-medium text-slate mt-1">
+          <p className="text-xs sm:text-sm font-normal text-slate mt-1">
             Acompanhe seus atendimentos, solicitações pendentes, página pública e
             status do Bot de WhatsApp.
           </p>
@@ -111,14 +111,14 @@ export default function AdminDashboardPage() {
         <div className="flex flex-wrap items-center gap-2.5">
           <Link
             href="/admin/agenda"
-            className="inline-flex items-center gap-2 px-4 py-3 rounded-xl bg-terracotta hover:bg-terracotta-dark text-white text-xs sm:text-sm font-bold shadow-sm transition-all"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-terracotta hover:bg-terracotta-dark text-white text-xs sm:text-sm font-medium shadow-sm transition-all"
           >
             <Calendar className="w-4 h-4" />
             <span>Abrir Calendário Inteligente</span>
           </Link>
           <Link
             href="/admin/site"
-            className="inline-flex items-center gap-2 px-4 py-3 rounded-xl bg-navy hover:bg-navy-800 text-white text-xs sm:text-sm font-bold shadow-sm transition-all"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-navy hover:bg-navy-800 text-white text-xs sm:text-sm font-medium shadow-sm transition-all"
           >
             <Palette className="w-4 h-4 text-gold" />
             <span>Editar Página Pública</span>
@@ -129,91 +129,91 @@ export default function AdminDashboardPage() {
       {/* Cards de Indicadores (KPIs) */}
       <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
         <div className="bg-white rounded-2xl p-5 border border-offwhite-border shadow-card">
-          <div className="flex items-center justify-between text-navy text-xs font-bold uppercase tracking-wider mb-3">
+          <div className="flex items-center justify-between text-slate text-[11px] font-medium uppercase tracking-wider mb-3">
             <span>Hoje</span>
-            <div className="w-8 h-8 rounded-lg bg-terracotta/15 flex items-center justify-center">
-              <CalendarCheck className="w-4 h-4 text-terracotta" />
+            <div className="w-7 h-7 rounded-lg bg-terracotta/10 flex items-center justify-center">
+              <CalendarCheck className="w-3.5 h-3.5 text-terracotta" />
             </div>
           </div>
-          <p className="font-sans text-3xl font-extrabold text-navy tracking-tight">
+          <p className="font-serif text-3xl font-semibold text-navy tracking-tight">
             {kpis.todayCount}
           </p>
-          <span className="text-xs font-semibold text-slate mt-1 block">
+          <span className="text-xs text-slate mt-1 block">
             Atendimentos hoje
           </span>
         </div>
 
         <div className="bg-white rounded-2xl p-5 border border-offwhite-border shadow-card">
-          <div className="flex items-center justify-between text-navy text-xs font-bold uppercase tracking-wider mb-3">
+          <div className="flex items-center justify-between text-slate text-[11px] font-medium uppercase tracking-wider mb-3">
             <span>No Mês</span>
-            <div className="w-8 h-8 rounded-lg bg-navy/10 flex items-center justify-center">
-              <Calendar className="w-4 h-4 text-navy" />
+            <div className="w-7 h-7 rounded-lg bg-navy/5 flex items-center justify-center">
+              <Calendar className="w-3.5 h-3.5 text-navy" />
             </div>
           </div>
-          <p className="font-sans text-3xl font-extrabold text-navy tracking-tight">
+          <p className="font-serif text-3xl font-semibold text-navy tracking-tight">
             {kpis.monthCount}
           </p>
-          <span className="text-xs font-semibold text-slate mt-1 block">
+          <span className="text-xs text-slate mt-1 block">
             Agendados no mês
           </span>
         </div>
 
-        <div className="bg-amber-50 rounded-2xl p-5 border-2 border-amber-300 shadow-card">
-          <div className="flex items-center justify-between text-amber-950 text-xs font-bold uppercase tracking-wider mb-3">
+        <div className="bg-amber-50/60 rounded-2xl p-5 border border-amber-200/80 shadow-card">
+          <div className="flex items-center justify-between text-amber-900 text-[11px] font-medium uppercase tracking-wider mb-3">
             <span>Pendentes</span>
-            <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
-              <Clock className="w-4 h-4 text-amber-700" />
+            <div className="w-7 h-7 rounded-lg bg-amber-500/15 flex items-center justify-center">
+              <Clock className="w-3.5 h-3.5 text-amber-700" />
             </div>
           </div>
-          <p className="font-sans text-3xl font-extrabold text-amber-950 tracking-tight">
+          <p className="font-serif text-3xl font-semibold text-amber-950 tracking-tight">
             {kpis.pendingCount}
           </p>
-          <span className="text-xs font-bold text-amber-900 mt-1 block">
+          <span className="text-xs text-amber-900/80 mt-1 block">
             Aguardando aprovação
           </span>
         </div>
 
         <div className="bg-white rounded-2xl p-5 border border-offwhite-border shadow-card">
-          <div className="flex items-center justify-between text-navy text-xs font-bold uppercase tracking-wider mb-3">
+          <div className="flex items-center justify-between text-slate text-[11px] font-medium uppercase tracking-wider mb-3">
             <span>Procedimentos</span>
-            <div className="w-8 h-8 rounded-lg bg-gold/25 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-gold-dark" />
+            <div className="w-7 h-7 rounded-lg bg-gold/15 flex items-center justify-center">
+              <Sparkles className="w-3.5 h-3.5 text-gold-dark" />
             </div>
           </div>
-          <p className="font-sans text-3xl font-extrabold text-navy tracking-tight">
+          <p className="font-serif text-3xl font-semibold text-navy tracking-tight">
             {kpis.activeProceduresCount}
           </p>
-          <span className="text-xs font-semibold text-slate mt-1 block">
+          <span className="text-xs text-slate mt-1 block">
             Ativos no catálogo
           </span>
         </div>
 
         <div className="bg-white rounded-2xl p-5 border border-offwhite-border shadow-card">
-          <div className="flex items-center justify-between text-navy text-xs font-bold uppercase tracking-wider mb-3">
+          <div className="flex items-center justify-between text-slate text-[11px] font-medium uppercase tracking-wider mb-3">
             <span>Clientes</span>
-            <div className="w-8 h-8 rounded-lg bg-navy/10 flex items-center justify-center">
-              <Users className="w-4 h-4 text-navy" />
+            <div className="w-7 h-7 rounded-lg bg-navy/5 flex items-center justify-center">
+              <Users className="w-3.5 h-3.5 text-navy" />
             </div>
           </div>
-          <p className="font-sans text-3xl font-extrabold text-navy tracking-tight">
+          <p className="font-serif text-3xl font-semibold text-navy tracking-tight">
             {kpis.totalClientsCount}
           </p>
-          <span className="text-xs font-semibold text-slate mt-1 block">
+          <span className="text-xs text-slate mt-1 block">
             Cadastrados
           </span>
         </div>
 
         <div className="bg-white rounded-2xl p-5 border border-offwhite-border shadow-card">
-          <div className="flex items-center justify-between text-navy text-xs font-bold uppercase tracking-wider mb-3">
+          <div className="flex items-center justify-between text-slate text-[11px] font-medium uppercase tracking-wider mb-3">
             <span>Cancelados</span>
-            <div className="w-8 h-8 rounded-lg bg-slate/10 flex items-center justify-center">
-              <XCircle className="w-4 h-4 text-slate" />
+            <div className="w-7 h-7 rounded-lg bg-slate/10 flex items-center justify-center">
+              <XCircle className="w-3.5 h-3.5 text-slate" />
             </div>
           </div>
-          <p className="font-sans text-3xl font-extrabold text-navy tracking-tight">
+          <p className="font-serif text-3xl font-semibold text-navy tracking-tight">
             {kpis.cancelledCount}
           </p>
-          <span className="text-xs font-semibold text-slate mt-1 block">
+          <span className="text-xs text-slate mt-1 block">
             Histórico geral
           </span>
         </div>

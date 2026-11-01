@@ -17,3 +17,4 @@ OPÇÃO 3 (Links Externos - YouTube Não Listado / Vimeo / Google Drive):
 Ao cadastrar uma aula em /admin/cursos, você também pode escolher "Link Externo"
 e colar o link de um vídeo do YouTube (Não Listado) ou Vimeo para assistir de
 qualquer lugar na nuvem!
+

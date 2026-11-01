@@ -52,7 +52,7 @@ const config: Config = {
         },
       },
       fontFamily: {
-        serif: ["var(--font-cormorant)", "Georgia", "serif"],
+        serif: ["var(--font-cormorant)", "var(--font-inter)", "system-ui", "sans-serif"],
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],
       },
       boxShadow: {

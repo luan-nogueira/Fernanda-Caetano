@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Inter } from "next/font/google";
+import { Plus_Jakarta_Sans, Inter } from "next/font/google";
 import "./globals.css";
 
-const playfair = Playfair_Display({
+const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  weight: ["600", "700", "800"],
+  weight: ["400", "500", "600", "700"],
   variable: "--font-cormorant",
   display: "swap",
 });
 
 const inter = Inter({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+  weight: ["400", "500", "600", "700"],
   variable: "--font-inter",
   display: "swap",
 });
@@ -31,7 +31,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className={`${playfair.variable} ${inter.variable}`}>
+    <html lang="pt-BR" className={`${jakarta.variable} ${inter.variable}`}>
       <body className="font-sans min-h-screen flex flex-col bg-offwhite text-navy antialiased selection:bg-terracotta/20 selection:text-navy">
         {children}
       </body>
