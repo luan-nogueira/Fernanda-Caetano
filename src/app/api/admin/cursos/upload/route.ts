@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
 
     if (!file) {
       return NextResponse.json(
-        { error: "Selecione um arquivo de vídeo (.mp4, .webm ou .mov)." },
+        { error: "Selecione um arquivo de vídeo ou apostila (.mp4, .pdf, .docx, .zip)." },
         { status: 400 }
       );
     }

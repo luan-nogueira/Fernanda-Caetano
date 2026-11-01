@@ -303,13 +303,29 @@ export default function CourseClassroomPage() {
                 activeLesson.attachment_url && (
                   <div className="pt-3 border-t border-offwhite-border">
                     <a
-                      href={activeLesson.attachment_url}
+                      href={
+                        activeLesson.attachment_url.startsWith("http://") ||
+                        activeLesson.attachment_url.startsWith("https://")
+                          ? activeLesson.attachment_url
+                          : mediaServerUrl
+                          ? `${mediaServerUrl}/videos/stream/${encodeURIComponent(
+                              activeLesson.attachment_url
+                            )}`
+                          : `/api/cursos/video/${encodeURIComponent(
+                              activeLesson.attachment_url
+                            )}`
+                      }
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-navy/5 hover:bg-navy hover:text-white text-navy border border-navy/20 text-xs font-bold transition-all"
+                      download={
+                        !activeLesson.attachment_url.startsWith("http")
+                          ? activeLesson.attachment_url
+                          : undefined
+                      }
+                      className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-gold/15 hover:bg-navy hover:text-white text-navy border-2 border-gold/40 text-xs sm:text-sm font-bold shadow-sm transition-all"
                     >
                       <FileText className="w-4 h-4 text-terracotta" />
-                      <span>Baixar {activeLesson.attachment_label}</span>
+                      <span>Baixar Material: {activeLesson.attachment_label}</span>
                     </a>
                   </div>
                 )}

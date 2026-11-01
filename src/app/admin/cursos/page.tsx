@@ -43,6 +43,7 @@ export default function AdminCursosPage() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
 
   // Form Cabeçalho da Página de Cursos
   const [pageHeaderForm, setPageHeaderForm] = useState({
@@ -330,6 +331,85 @@ export default function AdminCursosPage() {
       }
     } finally {
       setUploading(false);
+      e.target.value = "";
+    }
+  }
+
+  async function handleUploadAttachmentFile(
+    e: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingAttachment(true);
+    try {
+      const isLocal =
+        typeof window !== "undefined" &&
+        (window.location.hostname === "localhost" ||
+          window.location.hostname === "127.0.0.1");
+
+      const directServerBase = isLocal
+        ? "http://localhost:3003"
+        : mediaServerUrl;
+
+      let uploadedData: {
+        fileName?: string;
+        sizeMB?: string;
+        error?: string;
+      } | null = null;
+
+      if (directServerBase) {
+        try {
+          const directRes = await fetch(
+            `${directServerBase}/videos/upload?filename=${encodeURIComponent(
+              file.name
+            )}`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": file.type || "application/octet-stream",
+              },
+              body: file,
+            }
+          );
+          if (directRes.ok) {
+            uploadedData = await directRes.json();
+          }
+        } catch {
+          // fallback
+        }
+      }
+
+      if (!uploadedData && isLocal) {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch("/api/admin/cursos/upload", {
+          method: "POST",
+          body: formData,
+        });
+        uploadedData = await res.json();
+      }
+
+      if (uploadedData && uploadedData.fileName) {
+        showNotification(
+          `Apostila/Material "${uploadedData.fileName}" (${uploadedData.sizeMB} MB) anexado com sucesso!`
+        );
+        const cleanName = file.name
+          .replace(/\.[^/.]+$/, "")
+          .replace(/[_-]/g, " ");
+        setLessonForm((prev) => ({
+          ...prev,
+          attachment_url: uploadedData!.fileName!,
+          attachment_label: prev.attachment_label || cleanName,
+        }));
+        loadData();
+      } else {
+        alert(
+          uploadedData?.error ||
+            "Não foi possível enviar o anexo para o servidor. Verifique se o servidor local está ligado."
+        );
+      }
+    } finally {
+      setUploadingAttachment(false);
       e.target.value = "";
     }
   }
@@ -1603,40 +1683,64 @@ export default function AdminCursosPage() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold uppercase text-navy mb-1">
-                  Nome da Apostila / Material (Opcional)
+            <div className="p-4 rounded-2xl bg-offwhite/60 border border-offwhite-border space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <span className="text-xs font-bold uppercase text-navy flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-terracotta" />
+                  <span>Apostila ou Material de Apoio (PDF / Anexo)</span>
+                </span>
+                <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-navy hover:bg-navy-800 text-gold text-xs font-semibold cursor-pointer shadow-sm shrink-0">
+                  <Upload className="w-3.5 h-3.5 text-gold" />
+                  <span>
+                    {uploadingAttachment
+                      ? "Enviando arquivo..."
+                      : "Enviar PDF do Computador"}
+                  </span>
+                  <input
+                    type="file"
+                    accept=".pdf,.docx,.zip,.rar,.xlsx,.pptx"
+                    onChange={handleUploadAttachmentFile}
+                    disabled={uploadingAttachment}
+                    className="hidden"
+                  />
                 </label>
-                <input
-                  type="text"
-                  value={lessonForm.attachment_label}
-                  onChange={(e) =>
-                    setLessonForm({
-                      ...lessonForm,
-                      attachment_label: e.target.value,
-                    })
-                  }
-                  placeholder="Ex.: Apostila PDF - Aula 01"
-                  className="w-full px-3.5 py-2 rounded-xl border border-offwhite-border text-sm font-medium text-navy"
-                />
               </div>
-              <div>
-                <label className="block text-xs font-bold uppercase text-navy mb-1">
-                  Link do Material / PDF (Opcional)
-                </label>
-                <input
-                  type="text"
-                  value={lessonForm.attachment_url}
-                  onChange={(e) =>
-                    setLessonForm({
-                      ...lessonForm,
-                      attachment_url: e.target.value,
-                    })
-                  }
-                  placeholder="Ex.: https://drive.google.com/..."
-                  className="w-full px-3.5 py-2 rounded-xl border border-offwhite-border text-sm font-medium text-navy"
-                />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate mb-1">
+                    Nome de Exibição do Material (para o Aluno)
+                  </label>
+                  <input
+                    type="text"
+                    value={lessonForm.attachment_label}
+                    onChange={(e) =>
+                      setLessonForm({
+                        ...lessonForm,
+                        attachment_label: e.target.value,
+                      })
+                    }
+                    placeholder="Ex.: Apostila Completa - Aula 01 (PDF)"
+                    className="w-full px-3.5 py-2 rounded-xl border border-offwhite-border text-xs sm:text-sm font-medium text-navy bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate mb-1">
+                    Arquivo do Servidor OU Link (Google Drive, Dropbox...)
+                  </label>
+                  <input
+                    type="text"
+                    value={lessonForm.attachment_url}
+                    onChange={(e) =>
+                      setLessonForm({
+                        ...lessonForm,
+                        attachment_url: e.target.value,
+                      })
+                    }
+                    placeholder="Ex.: Apostila.pdf ou https://drive.google.com/..."
+                    className="w-full px-3.5 py-2 rounded-xl border border-offwhite-border text-xs sm:text-sm font-medium text-navy bg-white"
+                  />
+                </div>
               </div>
             </div>
 

@@ -74,7 +74,7 @@ function listServerVideoFiles() {
     }
     const files = fs.readdirSync(VIDEOS_DIR);
     return files
-      .filter((f) => /\.(mp4|webm|mov|m4v)$/i.test(f))
+      .filter((f) => /\.(mp4|webm|mov|m4v|pdf|docx|zip)$/i.test(f))
       .map((f) => {
         const st = fs.statSync(path.join(VIDEOS_DIR, f));
         return {
@@ -821,7 +821,13 @@ const server = http.createServer(async (req, res) => {
     const range = req.headers.range;
     const ext = path.extname(safeName).toLowerCase();
     const contentType =
-      ext === ".webm"
+      ext === ".pdf"
+        ? "application/pdf"
+        : ext === ".docx"
+        ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        : ext === ".zip"
+        ? "application/zip"
+        : ext === ".webm"
         ? "video/webm"
         : ext === ".mov"
         ? "video/quicktime"

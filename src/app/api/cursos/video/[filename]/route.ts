@@ -65,7 +65,13 @@ export async function GET(
     const range = req.headers.get("range");
     const ext = path.extname(safeName).toLowerCase();
     const contentType =
-      ext === ".webm"
+      ext === ".pdf"
+        ? "application/pdf"
+        : ext === ".docx"
+        ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        : ext === ".zip"
+        ? "application/zip"
+        : ext === ".webm"
         ? "video/webm"
         : ext === ".mov"
         ? "video/quicktime"
