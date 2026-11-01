@@ -10,10 +10,12 @@ import {
 } from "@/lib/availability";
 import { Appointment, Procedure, Unit } from "@/types/domain";
 import { dispatchWhatsAppBookingNotifications } from "@/lib/whatsapp-bot";
+import { pullAllTablesFromTurso, pushAllTablesToTurso } from "@/lib/turso-sync";
 
 export async function GET(req: NextRequest) {
   try {
     await requireAdminSession();
+    await pullAllTablesFromTurso();
     const db = getDb();
     const { searchParams } = new URL(req.url);
 
@@ -79,6 +81,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     await requireAdminSession();
+    await pullAllTablesFromTurso(true);
     const body = await req.json();
 
     const created = createBookingTransactional({
@@ -96,6 +99,7 @@ export async function POST(req: NextRequest) {
       bypassAdvanceCheck: true,
     });
 
+    await pushAllTablesToTurso();
     return NextResponse.json({ success: true, appointment: created });
   } catch (err) {
     if (err instanceof Error && err.message === "UNAUTHORIZED") {
@@ -114,6 +118,7 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     await requireAdminSession();
+    await pullAllTablesFromTurso(true);
     const db = getDb();
     const body = await req.json();
     const {
@@ -268,6 +273,7 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
+    await pushAllTablesToTurso();
     return NextResponse.json({ success: true, appointment: updated });
   } catch (err) {
     if (err instanceof Error && err.message === "UNAUTHORIZED") {

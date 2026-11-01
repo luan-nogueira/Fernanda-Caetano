@@ -4,6 +4,7 @@ import {
   getPublicSiteBundle,
   resolveCustomLinkHref,
 } from "@/lib/repositories";
+import { pullAllTablesFromTurso } from "@/lib/turso-sync";
 import { DynamicIcon } from "@/components/DynamicIcon";
 import { ShareProfileButton } from "@/components/ShareProfileButton";
 import { PublicFooter } from "@/components/PublicFooter";
@@ -27,6 +28,7 @@ export default async function HomePage({
 }) {
   const sp = await searchParams;
   const isPreview = sp?.preview === "1";
+  await pullAllTablesFromTurso();
   const bundle = getPublicSiteBundle({ previewDraft: isPreview });
   const { settings, sections, links, units, procedures } = bundle;
 

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createBookingTransactional } from "@/lib/booking-service";
 import { checkRateLimit } from "@/lib/auth";
 import { getDb } from "@/lib/db";
+import { pullAllTablesFromTurso, pushAllTablesToTurso } from "@/lib/turso-sync";
 
 const bookingSchema = z.object({
   procedureId: z.string().min(1, "Selecione o procedimento."),
@@ -54,6 +55,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: firstErr }, { status: 400 });
     }
 
+    await pullAllTablesFromTurso(true);
+
     const created = createBookingTransactional({
       procedureId: parsed.data.procedureId,
       unitId: parsed.data.unitId,
@@ -66,6 +69,8 @@ export async function POST(req: NextRequest) {
       homeCareAddress: parsed.data.homeCareAddress || undefined,
       source: "online",
     });
+
+    await pushAllTablesToTurso();
 
     const db = getDb();
     const unit = db

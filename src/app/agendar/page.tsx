@@ -1,5 +1,6 @@
 import React from "react";
 import { getPublicSiteBundle } from "@/lib/repositories";
+import { pullAllTablesFromTurso } from "@/lib/turso-sync";
 import { getSaoPauloNow } from "@/lib/availability";
 import { PublicHeaderNav } from "@/components/PublicHeaderNav";
 import { PublicFooter } from "@/components/PublicFooter";
@@ -14,6 +15,7 @@ export default async function AgendarPage({
   searchParams: Promise<{ procedimento?: string; unidade?: string }>;
 }) {
   const sp = await searchParams;
+  await pullAllTablesFromTurso();
   const { settings, procedures, units } = getPublicSiteBundle();
   const { todayStr } = getSaoPauloNow();
 

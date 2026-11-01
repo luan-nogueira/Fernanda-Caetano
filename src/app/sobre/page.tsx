@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { getPublicSiteBundle } from "@/lib/repositories";
+import { pullAllTablesFromTurso } from "@/lib/turso-sync";
 import { PublicHeaderNav } from "@/components/PublicHeaderNav";
 import { PublicFooter } from "@/components/PublicFooter";
 import {
@@ -14,6 +15,7 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function SobrePage() {
+  await pullAllTablesFromTurso();
   const { settings } = getPublicSiteBundle();
 
   let highlights: Array<{ title: string; description: string }> = [];

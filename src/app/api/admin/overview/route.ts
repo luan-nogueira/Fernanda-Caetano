@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import { getDb, hashPassword } from "@/lib/db";
 import { getSaoPauloNow } from "@/lib/availability";
+import { pullAllTablesFromTurso, pushAllTablesToTurso } from "@/lib/turso-sync";
 
 export async function GET() {
   try {
     await requireAdminSession();
+    await pullAllTablesFromTurso();
     const db = getDb();
     const { todayStr } = getSaoPauloNow();
 
@@ -109,12 +111,14 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const session = await requireAdminSession();
+    await pullAllTablesFromTurso(true);
     const db = getDb();
     const body = await req.json();
     const now = new Date().toISOString();
 
     if (body.action === "mark_notifications_read") {
       db.prepare("UPDATE notifications SET is_read = 1").run();
+      await pushAllTablesToTurso();
       return NextResponse.json({ success: true });
     }
 
@@ -144,6 +148,7 @@ export async function POST(req: NextRequest) {
         ).run(hashPassword(body.new_password), now, session.userId);
       }
 
+      await pushAllTablesToTurso();
       return NextResponse.json({ success: true });
     }
 

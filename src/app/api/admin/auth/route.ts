@@ -5,6 +5,7 @@ import {
   getAdminSession,
   SESSION_COOKIE_CONFIG,
 } from "@/lib/auth";
+import { pullAllTablesFromTurso } from "@/lib/turso-sync";
 import { cookies } from "next/headers";
 
 export async function GET() {
@@ -36,6 +37,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    await pullAllTablesFromTurso();
     const sessionPayload = authenticateAdminCredentials(email, password);
     if (!sessionPayload) {
       return NextResponse.json(

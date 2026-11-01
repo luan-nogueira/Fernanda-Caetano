@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { getPublicSiteBundle } from "@/lib/repositories";
+import { pullAllTablesFromTurso } from "@/lib/turso-sync";
 import { PublicHeaderNav } from "@/components/PublicHeaderNav";
 import { PublicFooter } from "@/components/PublicFooter";
 import {
@@ -23,6 +24,7 @@ function formatPriceBRL(cents: number | null, show: boolean | number) {
 }
 
 export default async function ProcedimentosPage() {
+  await pullAllTablesFromTurso();
   const { settings, categories, procedures } = getPublicSiteBundle();
 
   return (

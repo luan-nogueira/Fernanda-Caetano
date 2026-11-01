@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { Procedure, ProcedureCategory } from "@/types/domain";
+import { pullAllTablesFromTurso, pushAllTablesToTurso } from "@/lib/turso-sync";
 import crypto from "crypto";
 
 function slugify(text: string): string {
@@ -16,6 +17,7 @@ function slugify(text: string): string {
 export async function GET() {
   try {
     await requireAdminSession();
+    await pullAllTablesFromTurso();
     const db = getDb();
 
     const categories = db
@@ -123,6 +125,7 @@ export async function POST(req: NextRequest) {
       insertPU.run(id, uId);
     }
 
+    await pushAllTablesToTurso();
     return NextResponse.json({ success: true, id, slug });
   } catch (err) {
     if (err instanceof Error && err.message === "UNAUTHORIZED") {
@@ -203,6 +206,7 @@ export async function PUT(req: NextRequest) {
       }
     }
 
+    await pushAllTablesToTurso();
     return NextResponse.json({ success: true });
   } catch (err) {
     if (err instanceof Error && err.message === "UNAUTHORIZED") {
@@ -235,6 +239,7 @@ export async function DELETE(req: NextRequest) {
       db.prepare(
         "UPDATE procedures SET is_archived = 1, is_active = 0, is_visible_public = 0, updated_at = ? WHERE id = ?"
       ).run(new Date().toISOString(), id);
+      await pushAllTablesToTurso();
       return NextResponse.json({
         success: true,
         archived: true,
@@ -244,6 +249,7 @@ export async function DELETE(req: NextRequest) {
     }
 
     db.prepare("DELETE FROM procedures WHERE id = ?").run(id);
+    await pushAllTablesToTurso();
     return NextResponse.json({
       success: true,
       archived: false,

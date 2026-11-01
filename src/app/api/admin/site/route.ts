@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import { getDb } from "@/lib/db";
+import { pullAllTablesFromTurso, pushAllTablesToTurso } from "@/lib/turso-sync";
 import crypto from "crypto";
 
 export async function GET() {
   try {
     await requireAdminSession();
+    await pullAllTablesFromTurso();
     const db = getDb();
 
     const settings = db
@@ -47,6 +49,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     await requireAdminSession();
+    await pullAllTablesFromTurso(true);
     const db = getDb();
     const body = await req.json();
     const now = new Date().toISOString();
@@ -56,6 +59,7 @@ export async function POST(req: NextRequest) {
       db.prepare(
         "UPDATE site_settings SET draft_json = ?, updated_at = ? WHERE id = 'main'"
       ).run(JSON.stringify(body.draft), now);
+      await pushAllTablesToTurso();
       return NextResponse.json({ success: true });
     }
 
@@ -110,6 +114,7 @@ export async function POST(req: NextRequest) {
         now,
         now
       );
+      await pushAllTablesToTurso();
       return NextResponse.json({ success: true });
     }
 
@@ -141,6 +146,7 @@ export async function POST(req: NextRequest) {
         now,
         now
       );
+      await pushAllTablesToTurso();
       return NextResponse.json({ success: true, id });
     }
 
@@ -172,6 +178,7 @@ export async function POST(req: NextRequest) {
         now,
         body.id
       );
+      await pushAllTablesToTurso();
       return NextResponse.json({ success: true });
     }
 
@@ -183,12 +190,14 @@ export async function POST(req: NextRequest) {
       body.orderedIds.forEach((id: string, idx: number) => {
         stmt.run(idx + 1, now, id);
       });
+      await pushAllTablesToTurso();
       return NextResponse.json({ success: true });
     }
 
     // 6. Excluir botão
     if (body.action === "delete_link") {
       db.prepare("DELETE FROM custom_links WHERE id = ?").run(body.id);
+      await pushAllTablesToTurso();
       return NextResponse.json({ success: true });
     }
 
@@ -219,6 +228,7 @@ export async function POST(req: NextRequest) {
           );
         }
       );
+      await pushAllTablesToTurso();
       return NextResponse.json({ success: true });
     }
 

@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import { getDb } from "@/lib/db";
+import { pullAllTablesFromTurso, pushAllTablesToTurso } from "@/lib/turso-sync";
 import crypto from "crypto";
 
 export async function GET() {
   try {
     await requireAdminSession();
+    await pullAllTablesFromTurso();
     const db = getDb();
 
     const units = db
@@ -43,6 +45,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     await requireAdminSession();
+    await pullAllTablesFromTurso(true);
     const db = getDb();
     const body = await req.json();
     const now = new Date().toISOString();
@@ -73,6 +76,7 @@ export async function POST(req: NextRequest) {
         now,
         body.id
       );
+      await pushAllTablesToTurso();
       return NextResponse.json({ success: true });
     }
 
@@ -96,6 +100,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      await pushAllTablesToTurso();
       return NextResponse.json({ success: true });
     }
 
@@ -115,11 +120,13 @@ export async function POST(req: NextRequest) {
         body.reason || "Bloqueio administrativo",
         now
       );
+      await pushAllTablesToTurso();
       return NextResponse.json({ success: true, id });
     }
 
     if (body.action === "delete_block") {
       db.prepare("DELETE FROM schedule_blocks WHERE id = ?").run(body.id);
+      await pushAllTablesToTurso();
       return NextResponse.json({ success: true });
     }
 
@@ -139,6 +146,7 @@ export async function POST(req: NextRequest) {
         body.custom_shifts_json || null,
         now
       );
+      await pushAllTablesToTurso();
       return NextResponse.json({ success: true, id });
     }
 
@@ -146,6 +154,7 @@ export async function POST(req: NextRequest) {
       db.prepare("DELETE FROM availability_exceptions WHERE id = ?").run(
         body.id
       );
+      await pushAllTablesToTurso();
       return NextResponse.json({ success: true });
     }
 

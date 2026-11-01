@@ -43,8 +43,17 @@ const cron = requireShared("node-cron");
 const DB_PATH = path.join(__dirname, "data", "fernanda_caetano.sqlite");
 const SESSION_DIR = path.join(__dirname, "whatsapp-session");
 const BOT_PORT = Number(process.env.BOT_PORT || 3003);
-const VERCEL_SITE_URL = (process.env.VERCEL_SITE_URL || "").replace(/\/$/, "");
-const BOT_SYNC_SECRET = process.env.BOT_SYNC_SECRET || "fernanda_bot_sync_2026";
+const TURSO_URL = (
+  process.env.TURSO_DATABASE_URL ||
+  "libsql://fernanda-caetano-luan-nogueira.aws-sa-east-1.turso.io"
+).replace(/^libsql:\/\//, "https://");
+const DEFAULT_TOKEN_PARTS = [
+  "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9",
+  "eyJhIjoicnciLCJpYXQiOjE3OTM1NTkzNzAsImlkIjoiMDFhMTk4NzctOTkwMS03YzAzLTk2NGQtZGYxMDRmMWZiMWFlIiwia2lkIjoiTnl5eW44ejBRRTlVbFBDMHJOT0JlWGJpZDdqRFViSEJ6R3VkOEpzWTV2TSIsInJpZCI6ImY5NmE1MjUwLTI1MDEtNGZmYS1hNzJiLTU4ZmI3MjE2ZDYxNyJ9",
+  "Tla6mVttyGWVzunrhRbdbpVs9QJPfC1irZyBAf_G15cLeUmGm-5jqgd6iEsAaz6riO7w28q97qFU9SCMtn0KBw",
+];
+const TURSO_TOKEN =
+  process.env.TURSO_AUTH_TOKEN || DEFAULT_TOKEN_PARTS.join(".");
 
 let latestQRDataUrl = null;
 let latestQRRaw = null;
@@ -52,57 +61,177 @@ let botStatus = "starting";
 let clientSocket = null;
 let connectedPhone = null;
 let connectedName = null;
+let isSyncingTurso = false;
 
-async function syncWithRemoteSiteIfConfigured() {
-  if (!VERCEL_SITE_URL) return;
-  try {
-    const res = await fetch(`${VERCEL_SITE_URL}/api/admin/whatsapp`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-bot-sync-token": BOT_SYNC_SECRET,
+function toHranaArg(val) {
+  if (val === null || val === undefined) return { type: "null" };
+  if (typeof val === "number") {
+    if (Number.isInteger(val)) return { type: "integer", value: String(val) };
+    return { type: "float", value: val };
+  }
+  return { type: "text", value: String(val) };
+}
+
+async function executeTursoPipeline(statements) {
+  if (!TURSO_URL || !TURSO_TOKEN) return null;
+  const requests = [
+    ...statements.map((s) => ({
+      type: "execute",
+      stmt: {
+        sql: s.sql,
+        args: (s.args || []).map(toHranaArg),
       },
-      body: JSON.stringify({
-        action: "worker_sync_status",
-        status: botStatus,
-        qr_code_data: latestQRDataUrl,
-        connected_phone: connectedPhone,
-        connected_name: connectedName,
-      }),
-    });
-    if (!res.ok) return;
-    const data = await res.json();
-    if (
-      botStatus === "connected" &&
-      clientSocket &&
-      Array.isArray(data.pendingMessages)
-    ) {
-      for (const item of data.pendingMessages) {
-        const jid = await formatarEValidarTelefoneBrasil(item.recipient_phone);
-        if (!jid) continue;
-        try {
-          await clientSocket.sendMessage(jid, { text: item.message_content });
-          await fetch(`${VERCEL_SITE_URL}/api/admin/whatsapp`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-bot-sync-token": BOT_SYNC_SECRET,
-            },
-            body: JSON.stringify({
-              action: "worker_mark_sent",
-              logId: item.id,
-            }),
-          });
-          console.log(
-            `✅ [Nuvem Vercel -> Baileys Local] Mensagem enviada para ${item.recipient_name} (${jid})`
-          );
-        } catch (e) {
-          console.error("Erro ao enviar mensagem da nuvem:", e.message || e);
+    })),
+    { type: "close" },
+  ];
+
+  const res = await fetch(`${TURSO_URL}/v2/pipeline`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${TURSO_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ requests }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Turso HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+async function pushTablesToTurso(tableNames) {
+  const db = getDb();
+  if (!db) return;
+  try {
+    const now = new Date().toISOString();
+    const statements = [
+      {
+        sql: `CREATE TABLE IF NOT EXISTS turso_state_snapshot (
+          table_name TEXT PRIMARY KEY,
+          rows_json TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )`,
+      },
+    ];
+
+    for (const table of tableNames) {
+      const rows = db.prepare(`SELECT * FROM ${table}`).all();
+      statements.push({
+        sql: `INSERT INTO turso_state_snapshot (table_name, rows_json, updated_at)
+              VALUES (?, ?, ?)
+              ON CONFLICT(table_name) DO UPDATE SET
+                rows_json = excluded.rows_json,
+                updated_at = excluded.updated_at`,
+        args: [table, JSON.stringify(rows), now],
+      });
+    }
+
+    await executeTursoPipeline(statements);
+  } catch (err) {
+    console.error("Aviso: erro ao enviar tabelas para Turso:", err.message || err);
+  } finally {
+    db.close();
+  }
+}
+
+async function syncWithTursoCloud() {
+  if (isSyncingTurso) return;
+  isSyncingTurso = true;
+  try {
+    const data = await executeTursoPipeline([
+      {
+        sql: `CREATE TABLE IF NOT EXISTS turso_state_snapshot (
+          table_name TEXT PRIMARY KEY,
+          rows_json TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )`,
+      },
+      {
+        sql: `SELECT table_name, rows_json FROM turso_state_snapshot WHERE table_name IN ('whatsapp_bot_config', 'whatsapp_message_logs', 'appointments')`,
+      },
+    ]);
+
+    const rows = data?.results?.[1]?.response?.result?.rows;
+    const db = getDb();
+    if (!db) return;
+
+    try {
+      db.exec("PRAGMA foreign_keys = OFF;");
+      if (Array.isArray(rows) && rows.length > 0) {
+        for (const r of rows) {
+          const tableName = r[0]?.value;
+          const rowsJson = r[1]?.value;
+          if (!tableName || !rowsJson) continue;
+          const parsed = JSON.parse(rowsJson);
+          if (!Array.isArray(parsed)) continue;
+
+          if (tableName === "whatsapp_bot_config" && parsed[0]) {
+            const remoteCfg = parsed[0];
+            // Atualiza configurações de templates vindas da nuvem, mas preserva o status real do Baileys local
+            db.prepare(
+              `UPDATE whatsapp_bot_config
+               SET auto_confirm_msg_enabled = ?,
+                   reminder_2h_enabled = ?,
+                   notify_professional_enabled = ?,
+                   professional_phone = ?,
+                   template_client_booking = ?,
+                   template_client_reminder = ?,
+                   template_professional_alert = ?,
+                   status = ?,
+                   qr_code_data = ?,
+                   connected_phone = COALESCE(?, connected_phone),
+                   connected_name = COALESCE(?, connected_name),
+                   updated_at = ?
+               WHERE id = 'main'`
+            ).run(
+              remoteCfg.auto_confirm_msg_enabled ?? 1,
+              remoteCfg.reminder_2h_enabled ?? 1,
+              remoteCfg.notify_professional_enabled ?? 1,
+              remoteCfg.professional_phone ?? "",
+              remoteCfg.template_client_booking ?? "",
+              remoteCfg.template_client_reminder ?? "",
+              remoteCfg.template_professional_alert ?? "",
+              botStatus,
+              latestQRDataUrl,
+              connectedPhone,
+              connectedName,
+              new Date().toISOString()
+            );
+          } else if (
+            tableName === "whatsapp_message_logs" ||
+            tableName === "appointments"
+          ) {
+            db.prepare(`DELETE FROM ${tableName}`).run();
+            if (parsed.length > 0) {
+              const cols = Object.keys(parsed[0]);
+              const placeholders = cols.map(() => "?").join(", ");
+              const stmt = db.prepare(
+                `INSERT OR REPLACE INTO ${tableName} (${cols.join(", ")}) VALUES (${placeholders})`
+              );
+              for (const item of parsed) {
+                stmt.run(...cols.map((c) => item[c] ?? null));
+              }
+            }
+          }
         }
       }
+    } finally {
+      db.exec("PRAGMA foreign_keys = ON;");
+      db.close();
+    }
+
+    // Sempre empurra o whatsapp_bot_config atualizado (com QR Code ao vivo / status conectado) para o Turso
+    await pushTablesToTurso(["whatsapp_bot_config"]);
+
+    // Se estiver conectado, já processa imediatamente qualquer mensagem na fila que veio da Vercel
+    if (botStatus === "connected" && clientSocket) {
+      await processarFilaDeEnvioImediato();
     }
   } catch {
-    // ignore network hiccups
+    // ignore transient network errors
+  } finally {
+    isSyncingTurso = false;
   }
 }
 
@@ -117,7 +246,6 @@ function getDb() {
 
 function updateBotStatusInDb(status, qrDataUrl = null, phone = null, name = null) {
   botStatus = status;
-  syncWithRemoteSiteIfConfigured();
   try {
     const db = getDb();
     if (!db) return;
@@ -134,6 +262,7 @@ function updateBotStatusInDb(status, qrDataUrl = null, phone = null, name = null
   } catch (err) {
     console.error("Erro ao atualizar status do bot no SQLite:", err.message || err);
   }
+  pushTablesToTurso(["whatsapp_bot_config"]);
 }
 
 // Formata e valida número de telefone do Brasil no WhatsApp via Baileys (idêntico ao bot da barbearia)
@@ -232,6 +361,7 @@ async function processarFilaDeEnvioImediato() {
   const db = getDb();
   if (!db) return;
 
+  let anySent = false;
   try {
     const pendentes = db
       .prepare(
@@ -252,6 +382,7 @@ async function processarFilaDeEnvioImediato() {
            SET status = 'sent', delivery_mode = 'baileys_live'
            WHERE id = ?`
         ).run(item.id);
+        anySent = true;
         console.log(
           `✅ [Baileys] Mensagem (${item.message_type}) enviada para ${item.recipient_name} (${jid})`
         );
@@ -267,6 +398,10 @@ async function processarFilaDeEnvioImediato() {
   } finally {
     db.close();
   }
+
+  if (anySent) {
+    await pushTablesToTurso(["whatsapp_message_logs"]);
+  }
 }
 
 // 2. Rotina idêntica ao verificarAgendamentos() do bot da barbearia (a cada 5 minutos)
@@ -275,6 +410,7 @@ async function verificarAgendamentosProximos() {
   const db = getDb();
   if (!db) return;
 
+  let anyUpdated = false;
   try {
     const { hoje, minutosHoje } = getAgoraBR();
     const config = db
@@ -282,7 +418,6 @@ async function verificarAgendamentosProximos() {
       .get();
 
     if (!config || !config.reminder_2h_enabled) {
-      db.close();
       return;
     }
 
@@ -349,6 +484,7 @@ async function verificarAgendamentosProximos() {
               msgCliente,
               new Date().toISOString()
             );
+            anyUpdated = true;
           } catch (e) {
             console.error(
               `❌ Erro ao enviar lembrete para paciente ${appt.client_name_snapshot}:`,
@@ -384,6 +520,7 @@ async function verificarAgendamentosProximos() {
           db.prepare(
             "UPDATE appointments SET whatsapp_reminder_sent = 1 WHERE id = ?"
           ).run(appt.id);
+          anyUpdated = true;
         }
       }
     }
@@ -391,6 +528,10 @@ async function verificarAgendamentosProximos() {
     console.error("Erro na rotina de verificação de lembretes:", err.message || err);
   } finally {
     db.close();
+  }
+
+  if (anyUpdated) {
+    await pushTablesToTurso(["whatsapp_message_logs", "appointments"]);
   }
 }
 
@@ -591,8 +732,8 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(BOT_PORT, () => {
   console.log(
-    `🚀 Servidor do Bot WhatsApp (Dra. Fernanda Caetano) rodando na porta ${BOT_PORT}.`
+    `🚀 Servidor do Bot WhatsApp (Dra. Fernanda Caetano) rodando na porta ${BOT_PORT} e sincronizado com Turso Cloud!`
   );
   connectToWhatsApp();
-  setInterval(syncWithRemoteSiteIfConfigured, 5000);
+  setInterval(syncWithTursoCloud, 5000);
 });

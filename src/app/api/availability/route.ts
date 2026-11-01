@@ -3,9 +3,11 @@ import {
   calculateDayAvailability,
   calculateMonthAvailabilityMap,
 } from "@/lib/availability";
+import { pullAllTablesFromTurso } from "@/lib/turso-sync";
 
 export async function GET(req: NextRequest) {
   try {
+    await pullAllTablesFromTurso();
     const { searchParams } = new URL(req.url);
     const procedureId = searchParams.get("procedureId");
     const unitId = searchParams.get("unitId");

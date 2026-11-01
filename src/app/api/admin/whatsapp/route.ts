@@ -10,11 +10,13 @@ import {
   interpolateBotTemplate,
   runUpcomingRemindersSweep,
 } from "@/lib/whatsapp-bot";
+import { pullAllTablesFromTurso, pushAllTablesToTurso } from "@/lib/turso-sync";
 import crypto from "crypto";
 
 export async function GET() {
   try {
     await requireAdminSession();
+    await pullAllTablesFromTurso(true);
     const config = getWhatsAppBotConfig();
     const logs = getWhatsAppMessageLogs(40);
     return NextResponse.json({ config, logs });
@@ -86,9 +88,11 @@ export async function POST(req: NextRequest) {
     }
 
     await requireAdminSession();
+    await pullAllTablesFromTurso(true);
 
     if (body.action === "generate_qr") {
       const config = await generateWhatsAppQrCodeSession();
+      await pushAllTablesToTurso();
       return NextResponse.json({ success: true, config });
     }
 
@@ -97,11 +101,13 @@ export async function POST(req: NextRequest) {
         phone: body.phone,
         name: body.name,
       });
+      await pushAllTablesToTurso();
       return NextResponse.json({ success: true, config });
     }
 
     if (body.action === "disconnect") {
       const config = disconnectWhatsAppBot();
+      await pushAllTablesToTurso();
       return NextResponse.json({ success: true, config });
     }
 
@@ -128,12 +134,14 @@ export async function POST(req: NextRequest) {
         now
       );
 
+      await pushAllTablesToTurso();
       const config = getWhatsAppBotConfig();
       return NextResponse.json({ success: true, config });
     }
 
     if (body.action === "run_reminders_now") {
       const result = runUpcomingRemindersSweep(true);
+      await pushAllTablesToTurso();
       const logs = getWhatsAppMessageLogs(40);
       return NextResponse.json({
         success: true,
@@ -178,6 +186,7 @@ export async function POST(req: NextRequest) {
         now
       );
 
+      await pushAllTablesToTurso();
       const logs = getWhatsAppMessageLogs(40);
       return NextResponse.json({
         success: true,

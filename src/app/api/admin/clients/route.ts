@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { normalizePhoneBR } from "@/lib/booking-service";
+import { pullAllTablesFromTurso, pushAllTablesToTurso } from "@/lib/turso-sync";
 import crypto from "crypto";
 
 export async function GET(req: NextRequest) {
   try {
     await requireAdminSession();
+    await pullAllTablesFromTurso();
     const db = getDb();
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search")?.trim() || "";
@@ -48,6 +50,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     await requireAdminSession();
+    await pullAllTablesFromTurso(true);
     const db = getDb();
     const body = await req.json();
     const now = new Date().toISOString();
@@ -65,6 +68,7 @@ export async function POST(req: NextRequest) {
         now,
         body.id
       );
+      await pushAllTablesToTurso();
       return NextResponse.json({ success: true, id: body.id });
     }
 
@@ -84,6 +88,7 @@ export async function POST(req: NextRequest) {
       now
     );
 
+    await pushAllTablesToTurso();
     return NextResponse.json({ success: true, id });
   } catch (err) {
     if (err instanceof Error && err.message === "UNAUTHORIZED") {

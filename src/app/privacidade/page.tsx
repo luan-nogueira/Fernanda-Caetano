@@ -1,5 +1,6 @@
 import React from "react";
 import { getPublicSiteBundle } from "@/lib/repositories";
+import { pullAllTablesFromTurso } from "@/lib/turso-sync";
 import { PublicHeaderNav } from "@/components/PublicHeaderNav";
 import { PublicFooter } from "@/components/PublicFooter";
 import { ShieldCheck, Lock, FileCheck2 } from "lucide-react";
@@ -7,6 +8,7 @@ import { ShieldCheck, Lock, FileCheck2 } from "lucide-react";
 export const dynamic = "force-dynamic";
 
 export default async function PrivacidadePage() {
+  await pullAllTablesFromTurso();
   const { settings } = getPublicSiteBundle();
 
   return (

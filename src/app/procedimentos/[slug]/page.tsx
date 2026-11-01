@@ -5,6 +5,7 @@ import {
   getProcedureBySlug,
   getPublicSiteBundle,
 } from "@/lib/repositories";
+import { pullAllTablesFromTurso } from "@/lib/turso-sync";
 import { PublicHeaderNav } from "@/components/PublicHeaderNav";
 import { PublicFooter } from "@/components/PublicFooter";
 import {
@@ -24,6 +25,7 @@ export default async function ProcedimentoDetalhePage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  await pullAllTablesFromTurso();
   const proc = getProcedureBySlug(slug);
 
   if (!proc) {
