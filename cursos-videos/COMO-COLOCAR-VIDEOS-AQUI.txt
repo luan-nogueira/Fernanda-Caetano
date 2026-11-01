@@ -1,0 +1,19 @@
+================================================================================
+🎬 PASTA DE VÍDEOS DOS CURSOS — DRA. FERNANDA CAETANO
+================================================================================
+
+Como adicionar vídeos aos cursos:
+
+OPÇÃO 1 (Pelo computador / Servidor):
+Basta copiar e colar qualquer arquivo de vídeo (.mp4, .webm ou .mov) dentro desta
+pasta ("cursos-videos"). Ele aparecerá automaticamente na lista de vídeos dentro
+do Painel Administrativo em: /admin/cursos
+
+OPÇÃO 2 (Pelo Painel Administrativo):
+Acesse /admin/cursos -> aba "Pasta de Vídeos no Servidor" e clique em
+"Enviar Vídeo (.mp4)" para enviar direto pelo navegador.
+
+OPÇÃO 3 (Links Externos - YouTube Não Listado / Vimeo / Google Drive):
+Ao cadastrar uma aula em /admin/cursos, você também pode escolher "Link Externo"
+e colar o link de um vídeo do YouTube (Não Listado) ou Vimeo para assistir de
+qualquer lugar na nuvem!

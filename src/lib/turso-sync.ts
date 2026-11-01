@@ -33,6 +33,11 @@ const SYNC_TABLES = [
   "whatsapp_bot_config",
   "whatsapp_message_logs",
   "audit_logs",
+  "courses",
+  "course_lessons",
+  "course_students",
+  "course_enrollments",
+  "course_lesson_progress",
 ] as const;
 
 declare global {
@@ -166,6 +171,7 @@ export async function pullAllTablesFromTurso(force = false): Promise<boolean> {
 
     const db = getDb();
     db.exec("PRAGMA foreign_keys = OFF;");
+    const syncedTableNames = new Set<string>();
 
     try {
       for (const row of selectResult.rows) {
@@ -179,6 +185,7 @@ export async function pullAllTablesFromTurso(force = false): Promise<boolean> {
           continue;
         }
 
+        syncedTableNames.add(tableName);
         const parsedRows = JSON.parse(rowsJson);
         if (!Array.isArray(parsedRows)) continue;
 
@@ -201,6 +208,34 @@ export async function pullAllTablesFromTurso(force = false): Promise<boolean> {
       }
     } finally {
       db.exec("PRAGMA foreign_keys = ON;");
+    }
+
+    if (!syncedTableNames.has("courses")) {
+      const existingLink = db
+        .prepare("SELECT id FROM custom_links WHERE id = 'link-cursos'")
+        .get();
+      if (!existingLink) {
+        const now = new Date().toISOString();
+        db.prepare(
+          `INSERT INTO custom_links (
+            id, title, subtitle, icon_name, link_type, destination,
+            style_variant, badge_text, is_active, display_order, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`
+        ).run(
+          "link-cursos",
+          "Cursos & Especializações",
+          "Área exclusiva de alunos e capacitações com a Dra. Fernanda Caetano",
+          "GraduationCap",
+          "internal_page",
+          "/cursos",
+          "outline_gold",
+          "Área do Aluno",
+          3,
+          now,
+          now
+        );
+      }
+      await pushAllTablesToTurso();
     }
 
     global.__tursoLastPullAt = Date.now();

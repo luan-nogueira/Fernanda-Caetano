@@ -18,11 +18,13 @@ import {
   FileText,
   UserCheck,
   Star,
+  GraduationCap,
 } from "lucide-react";
 
 export const ICON_OPTIONS = [
   "CalendarCheck",
   "Sparkles",
+  "GraduationCap",
   "MapPin",
   "Building2",
   "MessageCircle",
@@ -77,6 +79,8 @@ export function DynamicIcon({
       return <UserCheck className={className} />;
     case "Star":
       return <Star className={className} />;
+    case "GraduationCap":
+      return <GraduationCap className={className} />;
     case "ExternalLink":
       return <ExternalLink className={className} />;
     case "Calendar":

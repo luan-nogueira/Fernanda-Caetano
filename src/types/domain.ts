@@ -227,3 +227,52 @@ export interface WhatsAppMessageLog {
   created_at: string;
 }
 
+export interface Course {
+  id: string;
+  slug: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  cover_image_url: string;
+  workload_hours: string;
+  price_display: string;
+  whatsapp_interest_message: string;
+  is_active: number | boolean;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+  lessons_count?: number;
+}
+
+export interface CourseLesson {
+  id: string;
+  course_id: string;
+  module_title: string;
+  title: string;
+  description: string;
+  video_source_type: "local_file" | "external_url";
+  video_url: string;
+  duration_label: string;
+  attachment_url: string;
+  attachment_label: string;
+  is_free_preview: number | boolean;
+  display_order: number;
+  created_at: string;
+}
+
+export interface CourseStudent {
+  id: string;
+  full_name: string;
+  email: string;
+  phone: string;
+  password_hash: string;
+  password_plain_hint: string;
+  is_active: number | boolean;
+  expires_at: string | null;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+  enrolled_course_ids?: string[];
+}
+
+

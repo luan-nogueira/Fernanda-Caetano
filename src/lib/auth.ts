@@ -99,6 +99,124 @@ export const SESSION_COOKIE_CONFIG = {
   maxAge: 60 * 60 * 24 * 7,
 };
 
+const STUDENT_COOKIE_NAME = "fc_student_session";
+
+export interface StudentSessionPayload {
+  studentId: string;
+  fullName: string;
+  email: string;
+  role: "student";
+  exp: number;
+}
+
+export function createStudentSessionToken(payload: StudentSessionPayload): string {
+  const data = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const sig = crypto
+    .createHmac("sha256", SECRET_KEY)
+    .update(data)
+    .digest("base64url");
+  return `${data}.${sig}`;
+}
+
+export function verifyStudentSessionToken(
+  token?: string
+): StudentSessionPayload | null {
+  if (!token || !token.includes(".")) return null;
+  const [data, sig] = token.split(".");
+  if (!data || !sig) return null;
+
+  const expectedSig = crypto
+    .createHmac("sha256", SECRET_KEY)
+    .update(data)
+    .digest("base64url");
+
+  try {
+    if (
+      !crypto.timingSafeEqual(
+        Buffer.from(sig, "utf8"),
+        Buffer.from(expectedSig, "utf8")
+      )
+    ) {
+      return null;
+    }
+    const decoded = JSON.parse(
+      Buffer.from(data, "base64url").toString("utf8")
+    ) as StudentSessionPayload;
+
+    if (Date.now() > decoded.exp || decoded.role !== "student") {
+      return null;
+    }
+    return decoded;
+  } catch {
+    return null;
+  }
+}
+
+export async function getStudentSession(): Promise<StudentSessionPayload | null> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(STUDENT_COOKIE_NAME)?.value;
+  return verifyStudentSessionToken(token);
+}
+
+export function authenticateStudentCredentials(
+  email: string,
+  password: string
+): { session?: StudentSessionPayload; error?: string } {
+  const db = getDb();
+  const student = db
+    .prepare("SELECT * FROM course_students WHERE LOWER(email) = LOWER(?)")
+    .get(email.trim()) as
+    | {
+        id: string;
+        full_name: string;
+        email: string;
+        password_hash: string;
+        is_active: number;
+        expires_at: string | null;
+      }
+    | undefined;
+
+  if (!student) {
+    return { error: "E-mail ou senha inválidos." };
+  }
+  if (!verifyPassword(password, student.password_hash)) {
+    return { error: "E-mail ou senha inválidos." };
+  }
+  if (!student.is_active) {
+    return {
+      error:
+        "Seu acesso está temporariamente suspenso. Entre em contato com a Dra. Fernanda Caetano.",
+    };
+  }
+  if (student.expires_at) {
+    const today = new Date().toISOString().slice(0, 10);
+    if (student.expires_at < today) {
+      return {
+        error:
+          "O prazo do seu acesso expirou. Entre em contato com a Dra. Fernanda para renovar.",
+      };
+    }
+  }
+
+  return {
+    session: {
+      studentId: student.id,
+      fullName: student.full_name,
+      email: student.email,
+      role: "student",
+      exp: Date.now() + 1000 * 60 * 60 * 24 * 14, // 14 dias
+    },
+  };
+}
+
+export const STUDENT_COOKIE_CONFIG = {
+  name: STUDENT_COOKIE_NAME,
+  httpOnly: true,
+  path: "/",
+  sameSite: "lax" as const,
+  maxAge: 60 * 60 * 24 * 14,
+};
+
 // Rate limiter simples em memória para proteger a rota pública de agendamento contra abusos
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 

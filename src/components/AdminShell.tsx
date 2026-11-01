@@ -19,6 +19,7 @@ import {
   Menu,
   X,
   CheckCircle2,
+  GraduationCap,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -28,6 +29,12 @@ const NAV_ITEMS = [
     label: "Agenda de Atendimentos",
     icon: Calendar,
     badge: "Principal",
+  },
+  {
+    href: "/admin/cursos",
+    label: "Cursos & Área de Alunos",
+    icon: GraduationCap,
+    badge: "Novo",
   },
   {
     href: "/admin/site",

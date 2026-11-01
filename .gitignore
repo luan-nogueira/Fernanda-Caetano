@@ -11,6 +11,9 @@ build/
 # Local SQLite & WhatsApp Baileys Auth Session (Secrets / Runtime Data)
 data/
 whatsapp-session/
+cursos-videos/*.mp4
+cursos-videos/*.webm
+cursos-videos/*.mov
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal

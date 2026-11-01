@@ -28,6 +28,8 @@ export interface AppDatabase {
 declare global {
   // eslint-disable-next-line no-var
   var __fernandaDb: AppDatabase | undefined;
+  // eslint-disable-next-line no-var
+  var __fernandaSchemaV2: boolean | undefined;
 }
 
 export function hashPassword(password: string): string {
@@ -57,6 +59,10 @@ function toPlain<T>(val: T): T {
 
 export function getDb(): AppDatabase {
   if (global.__fernandaDb) {
+    if (!global.__fernandaSchemaV2) {
+      initSchemaAndSeed(global.__fernandaDb);
+      global.__fernandaSchemaV2 = true;
+    }
     return global.__fernandaDb;
   }
 
@@ -378,7 +384,70 @@ function initSchemaAndSeed(db: AppDatabase) {
       details_json TEXT,
       created_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS courses (
+      id TEXT PRIMARY KEY,
+      slug TEXT UNIQUE NOT NULL,
+      title TEXT NOT NULL,
+      subtitle TEXT NOT NULL DEFAULT '',
+      description TEXT NOT NULL DEFAULT '',
+      cover_image_url TEXT NOT NULL DEFAULT '',
+      workload_hours TEXT NOT NULL DEFAULT '12h',
+      price_display TEXT NOT NULL DEFAULT 'Sob consulta',
+      whatsapp_interest_message TEXT NOT NULL DEFAULT '',
+      is_active INTEGER NOT NULL DEFAULT 1,
+      display_order INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS course_lessons (
+      id TEXT PRIMARY KEY,
+      course_id TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+      module_title TEXT NOT NULL DEFAULT 'Módulo 1 — Fundamentos',
+      title TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      video_source_type TEXT NOT NULL DEFAULT 'local_file',
+      video_url TEXT NOT NULL DEFAULT '',
+      duration_label TEXT NOT NULL DEFAULT '15 min',
+      attachment_url TEXT NOT NULL DEFAULT '',
+      attachment_label TEXT NOT NULL DEFAULT '',
+      is_free_preview INTEGER NOT NULL DEFAULT 0,
+      display_order INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS course_students (
+      id TEXT PRIMARY KEY,
+      full_name TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      phone TEXT NOT NULL DEFAULT '',
+      password_hash TEXT NOT NULL,
+      password_plain_hint TEXT NOT NULL DEFAULT '',
+      is_active INTEGER NOT NULL DEFAULT 1,
+      expires_at TEXT,
+      notes TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS course_enrollments (
+      id TEXT PRIMARY KEY,
+      student_id TEXT NOT NULL REFERENCES course_students(id) ON DELETE CASCADE,
+      course_id TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+      granted_at TEXT NOT NULL,
+      UNIQUE(student_id, course_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS course_lesson_progress (
+      student_id TEXT NOT NULL,
+      lesson_id TEXT NOT NULL,
+      completed_at TEXT NOT NULL,
+      PRIMARY KEY (student_id, lesson_id)
+    );
   `);
+
+  seedCoursesModuleIfNeeded(db);
 
   const existingSettings = db
     .prepare("SELECT id FROM site_settings WHERE id = 'main'")
@@ -1254,4 +1323,178 @@ function initSchemaAndSeed(db: AppDatabase) {
     defaultProfAlertTpl,
     now
   );
+}
+
+function seedCoursesModuleIfNeeded(db: AppDatabase) {
+  const existingCourse = db.prepare("SELECT id FROM courses LIMIT 1").get();
+  if (existingCourse) return;
+
+  const now = new Date().toISOString();
+
+  db.prepare(
+    `INSERT INTO courses (
+      id, slug, title, subtitle, description, cover_image_url,
+      workload_hours, price_display, whatsapp_interest_message,
+      is_active, display_order, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`
+  ).run(
+    "course-feridas-laser",
+    "manejo-avancado-feridas-laserterapia",
+    "Manejo Avançado de Feridas & Laserterapia Clínica",
+    "Capacitação teórica e prática com protocolos clínicos da Dra. Fernanda Caetano",
+    "Curso completo voltado a profissionais e estudantes de enfermagem que desejam dominar avaliação tecidual, escolha de coberturas tecnológicas, desbridamento e protocolos de fotobiomodulação (Laserterapia e ILIB).",
+    "/images/fernanda-portrait.svg",
+    "20 horas • Certificado Incluso",
+    "R$ 497,00",
+    "Olá Dra. Fernanda! Tenho interesse em adquirir o acesso ao curso Manejo Avançado de Feridas & Laserterapia Clínica.",
+    1,
+    now,
+    now
+  );
+
+  db.prepare(
+    `INSERT INTO courses (
+      id, slug, title, subtitle, description, cover_image_url,
+      workload_hours, price_display, whatsapp_interest_message,
+      is_active, display_order, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`
+  ).run(
+    "course-estetica-avancada",
+    "imersao-estetica-avancada-peim-botox",
+    "Imersão em Estética Avançada: PEIM, Toxina Botulínica & Lobuloplastia",
+    "Protocolos seguros, anatomia aplicada e manejo de intercorrências em consultório",
+    "Formação exclusiva com foco na prática clínica segura, diluições, pontos de aplicação, cuidados pós-procedimento e excelência no atendimento estético.",
+    "/images/fernanda-portrait.svg",
+    "16 horas • Material de Apoio PDF",
+    "R$ 697,00",
+    "Olá Dra. Fernanda! Quero saber como adquirir o acesso ao curso Imersão em Estética Avançada.",
+    2,
+    now,
+    now
+  );
+
+  const insertLesson = db.prepare(
+    `INSERT INTO course_lessons (
+      id, course_id, module_title, title, description,
+      video_source_type, video_url, duration_label,
+      attachment_url, attachment_label, is_free_preview, display_order, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  );
+
+  insertLesson.run(
+    "lesson-1",
+    "course-feridas-laser",
+    "Módulo 1 — Avaliação Clínica e Preparo do Leito",
+    "Aula 01: Boas-vindas e Sistemática de Avaliação de Feridas Complexas",
+    "Introdução à metodologia TIME, mensuração clínica, registro fotográfico padronizado e anamnese dermatológica.",
+    "local_file",
+    "aula-demonstracao.mp4",
+    "18 min",
+    "",
+    "Apostila Módulo 1 (PDF)",
+    1,
+    1,
+    now
+  );
+
+  insertLesson.run(
+    "lesson-2",
+    "course-feridas-laser",
+    "Módulo 1 — Avaliação Clínica e Preparo do Leito",
+    "Aula 02: Escolha Inteligente de Coberturas e Controle de Exsudato",
+    "Quando indicar espumas, alginatos, hidrofibras, matrizes regeneradoras e antimicrobianos tópicos.",
+    "local_file",
+    "aula-demonstracao.mp4",
+    "24 min",
+    "",
+    "Guia Rápido de Coberturas (PDF)",
+    0,
+    2,
+    now
+  );
+
+  insertLesson.run(
+    "lesson-3",
+    "course-feridas-laser",
+    "Módulo 2 — Laserterapia e Fotobiomodulação",
+    "Aula 03: Dosimetria, Comprimentos de Onda (Vermelho vs. Infravermelho) e PDT",
+    "Parâmetros clínicos em Joules, aplicação pontual vs. varredura e terapia fotodinâmica em feridas infectadas.",
+    "local_file",
+    "aula-demonstracao.mp4",
+    "32 min",
+    "",
+    "Tabela de Dosimetria Laser (PDF)",
+    0,
+    3,
+    now
+  );
+
+  insertLesson.run(
+    "lesson-4",
+    "course-estetica-avancada",
+    "Módulo 1 — Anatomia e Biossegurança",
+    "Aula 01: Marcação Facial Segura e Diluição de Toxina Botulínica",
+    "Pontos anatômicos essenciais, zonas de risco e protocolos de reconstituição estéril.",
+    "local_file",
+    "aula-demonstracao.mp4",
+    "28 min",
+    "",
+    "Ficha de Avaliação Facial (PDF)",
+    1,
+    1,
+    now
+  );
+
+  // Aluno de demonstração para teste imediato do login
+  db.prepare(
+    `INSERT INTO course_students (
+      id, full_name, email, phone, password_hash, password_plain_hint,
+      is_active, expires_at, notes, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, 1, NULL, ?, ?, ?)`
+  ).run(
+    "student-demo-1",
+    "Camila Souza (Aluna Teste)",
+    "aluna@fernandacaetano.com.br",
+    "5522998887766",
+    hashPassword("Curso@2026"),
+    "Curso@2026",
+    "Acesso liberado pela Dra. Fernanda para demonstração da área de membros.",
+    now,
+    now
+  );
+
+  db.prepare(
+    `INSERT INTO course_enrollments (id, student_id, course_id, granted_at)
+     VALUES (?, ?, ?, ?)`
+  ).run("enroll-demo-1", "student-demo-1", "course-feridas-laser", now);
+
+  // Adiciona botão de Cursos na página inicial caso custom_links já exista
+  const existingLink = db
+    .prepare("SELECT id FROM custom_links WHERE id = 'link-cursos'")
+    .get();
+  if (!existingLink) {
+    const existingSettings = db
+      .prepare("SELECT id FROM site_settings WHERE id = 'main'")
+      .get();
+    if (existingSettings) {
+      db.prepare(
+        `INSERT INTO custom_links (
+          id, title, subtitle, icon_name, link_type, destination,
+          style_variant, badge_text, is_active, display_order, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`
+      ).run(
+        "link-cursos",
+        "Cursos & Especializações",
+        "Área exclusiva de alunos e capacitações com a Dra. Fernanda Caetano",
+        "GraduationCap",
+        "internal_page",
+        "/cursos",
+        "outline_gold",
+        "Área do Aluno",
+        3,
+        now,
+        now
+      );
+    }
+  }
 }
