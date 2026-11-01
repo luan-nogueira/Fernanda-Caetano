@@ -296,10 +296,10 @@ export async function DELETE(req: NextRequest) {
     const id = searchParams.get("id");
 
     if (clearDemo) {
-      db.prepare("DELETE FROM whatsapp_message_logs WHERE appointment_id LIKE 'appt-demo-%'").run();
-      db.prepare("DELETE FROM appointments WHERE id LIKE 'appt-demo-%'").run();
-      db.prepare("DELETE FROM clients WHERE id LIKE 'client-demo-%' AND id NOT IN (SELECT DISTINCT client_id FROM appointments WHERE client_id IS NOT NULL)").run();
-      db.prepare("DELETE FROM notifications WHERE id LIKE 'notif-demo-%' OR related_appointment_id LIKE 'appt-demo-%'").run();
+      db.prepare("DELETE FROM whatsapp_message_logs").run();
+      db.prepare("DELETE FROM appointments").run();
+      db.prepare("DELETE FROM clients").run();
+      db.prepare("DELETE FROM notifications").run();
       await pushAllTablesToTurso();
       return NextResponse.json({ success: true, clearedDemo: true });
     }
