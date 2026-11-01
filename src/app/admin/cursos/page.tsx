@@ -417,7 +417,7 @@ export default function AdminCursosPage() {
   async function handleDeleteVideoFile(fileName: string) {
     if (
       !window.confirm(
-        `Deseja apagar o arquivo de vídeo "${fileName}" da pasta cursos-videos do servidor?`
+        `Deseja remover o arquivo de vídeo "${fileName}" da biblioteca?`
       )
     )
       return;
@@ -455,7 +455,7 @@ export default function AdminCursosPage() {
     });
 
     showNotification(
-      `Arquivo "${fileName}" excluído da pasta cursos-videos do servidor!`
+      `Arquivo "${fileName}" removido da biblioteca!`
     );
     loadData();
   }
@@ -515,8 +515,8 @@ export default function AdminCursosPage() {
             Gestão de Cursos, Vídeos & Acesso de Alunos
           </h1>
           <p className="text-sm font-medium text-slate mt-1">
-            Cadastre cursos, adicione vídeo-aulas da pasta do servidor ou links,
-            crie login/senha para quem pagou e envie o acesso pelo WhatsApp.
+            Cadastre cursos, adicione vídeo-aulas, apostilas e gerencie o acesso
+            dos alunos de forma simples e profissional.
           </p>
         </div>
 
@@ -599,7 +599,7 @@ export default function AdminCursosPage() {
           }`}
         >
           <FolderOpen className="w-4 h-4 text-gold" />
-          <span>3. Pasta de Vídeos no Servidor ({localVideos.length})</span>
+          <span>3. Biblioteca de Mídia ({localVideos.length})</span>
         </button>
       </div>
 
@@ -862,7 +862,7 @@ export default function AdminCursosPage() {
                     </p>
                     <p className="text-xs font-medium text-slate">
                       Clique em &ldquo;Adicionar Vídeo-Aula&rdquo; para vincular
-                      um vídeo da pasta do servidor ou do YouTube/Vimeo.
+                      um vídeo da biblioteca ou link externo (YouTube/Vimeo).
                     </p>
                   </div>
                 ) : (
@@ -896,7 +896,7 @@ export default function AdminCursosPage() {
                             <span className="inline-flex items-center gap-1">
                               <Video className="w-3.5 h-3.5 text-terracotta" />
                               {lesson.video_source_type === "local_file"
-                                ? `Arquivo Servidor: ${
+                                ? `Arquivo de Vídeo: ${
                                     lesson.video_url || "(nenhum)"
                                   }`
                                 : `Link Externo: ${lesson.video_url}`}
@@ -1260,29 +1260,25 @@ export default function AdminCursosPage() {
         </div>
       )}
 
-      {/* ABA 3: PASTA DE VÍDEOS NO SERVIDOR */}
+      {/* ABA 3: BIBLIOTECA DE MÍDIA E VÍDEOS */}
       {activeTab === "folder" && (
         <div className="bg-white rounded-3xl p-6 border border-offwhite-border shadow-card space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-offwhite-border pb-4">
             <div>
               <h2 className="font-serif text-2xl font-bold text-navy">
-                Pasta de Vídeos no Servidor (`cursos-videos`)
+                Biblioteca de Aulas & Mídia
               </h2>
               <p className="text-xs sm:text-sm font-medium text-slate mt-0.5">
-                Você pode colocar os arquivos `.mp4` diretamente na pasta do
-                computador/servidor ou enviar pelo botão ao lado.
+                Envie as vídeo-aulas e arquivos para ficarem disponíveis aos alunos matriculados.
               </p>
               <div className="flex flex-wrap items-center gap-2 mt-2">
-                <p className="text-xs font-mono font-bold text-navy bg-offwhite px-3 py-1.5 rounded-lg border border-offwhite-border inline-block">
-                  📁 Caminho no Servidor:{" "}
-                  {videosFolderPath || "cursos-videos/"}
-                </p>
-                {mediaServerUrl && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    Conectado em Tempo Real ao Servidor
-                  </span>
-                )}
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Armazenamento Seguro de Alta Performance
+                </span>
+                <span className="text-xs text-slate font-medium px-2.5 py-1 bg-offwhite rounded-lg border border-offwhite-border">
+                  {localVideos.length} arquivo(s) disponível(is)
+                </span>
               </div>
             </div>
 
@@ -1290,8 +1286,8 @@ export default function AdminCursosPage() {
               <Upload className="w-4 h-4" />
               <span>
                 {uploading
-                  ? "Enviando vídeo..."
-                  : "Enviar Vídeo (.mp4) pelo Navegador"}
+                  ? "Enviando arquivo..."
+                  : "Enviar Novo Vídeo (.mp4)"}
               </span>
               <input
                 type="file"
@@ -1304,16 +1300,15 @@ export default function AdminCursosPage() {
           </div>
 
           {localVideos.length === 0 ? (
-            <div className="p-8 rounded-2xl bg-offwhite border border-offwhite-border text-center space-y-2">
-              <FolderOpen className="w-10 h-10 text-terracotta mx-auto" />
+            <div className="p-10 rounded-2xl bg-offwhite border border-offwhite-border text-center space-y-3">
+              <div className="w-14 h-14 rounded-2xl bg-navy/5 text-navy mx-auto flex items-center justify-center">
+                <Video className="w-7 h-7 text-gold-dark" />
+              </div>
               <p className="text-base font-bold text-navy">
-                Nenhum arquivo `.mp4` na pasta `cursos-videos` ainda.
+                Nenhum vídeo enviado para a biblioteca ainda.
               </p>
-              <p className="text-xs sm:text-sm font-medium text-slate max-w-xl mx-auto">
-                Copie seus vídeos `.mp4` para dentro da pasta{" "}
-                <strong>cursos-videos</strong> do projeto ou clique no botão{" "}
-                <strong>&ldquo;Enviar Vídeo (.mp4) pelo Navegador&rdquo;</strong>{" "}
-                acima!
+              <p className="text-xs sm:text-sm font-medium text-slate max-w-md mx-auto leading-relaxed">
+                Clique no botão <strong>&ldquo;Enviar Novo Vídeo (.mp4)&rdquo;</strong> acima para carregar as vídeo-aulas dos seus cursos diretamente do seu computador ou celular.
               </p>
             </div>
           ) : (
@@ -1340,7 +1335,7 @@ export default function AdminCursosPage() {
                     type="button"
                     onClick={() => handleDeleteVideoFile(v.name)}
                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-200 text-xs font-semibold transition-colors shrink-0"
-                    title="Apagar vídeo da pasta cursos-videos do servidor"
+                    title="Remover vídeo da biblioteca"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>Apagar</span>
@@ -1593,7 +1588,7 @@ export default function AdminCursosPage() {
                       : "bg-white text-navy border-offwhite-border"
                   }`}
                 >
-                  📁 Pasta do Servidor (`cursos-videos`)
+                  📁 Vídeo da Biblioteca
                 </button>
                 <button
                   type="button"
@@ -1616,7 +1611,7 @@ export default function AdminCursosPage() {
               {lessonForm.video_source_type === "local_file" ? (
                 <div className="space-y-2">
                   <label className="block text-xs font-bold text-navy">
-                    Selecione o arquivo da pasta `cursos-videos` ou digite o nome:
+                    Selecione o vídeo da biblioteca ou envie um novo:
                   </label>
                   {localVideos.length > 0 && (
                     <select
@@ -1629,7 +1624,7 @@ export default function AdminCursosPage() {
                       }
                       className="w-full px-3.5 py-2.5 rounded-xl border border-offwhite-border text-sm font-semibold text-navy bg-white"
                     >
-                      <option value="">-- Escolha um vídeo da pasta --</option>
+                      <option value="">-- Escolha um vídeo da biblioteca --</option>
                       {localVideos.map((v) => (
                         <option key={v.name} value={v.name}>
                           {v.name} ({v.sizeMB} MB)
@@ -1726,7 +1721,7 @@ export default function AdminCursosPage() {
                 </div>
                 <div>
                   <label className="block text-[11px] font-semibold text-slate mb-1">
-                    Arquivo do Servidor OU Link (Google Drive, Dropbox...)
+                    Arquivo Anexado OU Link Externo (Google Drive, Dropbox...)
                   </label>
                   <input
                     type="text"

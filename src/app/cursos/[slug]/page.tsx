@@ -242,19 +242,7 @@ export default function CourseClassroomPage() {
                   {activeLesson.title}
                 </h3>
                 <p className="text-xs sm:text-sm font-medium text-white/85">
-                  Player pronto! Para reproduzir o arquivo local{" "}
-                  <strong className="text-gold">
-                    {activeLesson.video_url || "desta aula"}
-                  </strong>
-                  , basta colocá-lo na pasta{" "}
-                  <code className="bg-white/10 px-2 py-0.5 rounded text-gold-light">
-                    cursos-videos/
-                  </code>{" "}
-                  do servidor ou enviar pelo painel em{" "}
-                  <code className="bg-white/10 px-2 py-0.5 rounded text-gold-light">
-                    /admin/cursos
-                  </code>
-                  .
+                  Vídeo-aula em preparação pela Dra. Fernanda Caetano. Em breve o conteúdo estará disponível para você!
                 </p>
               </div>
             )}
