@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" fill="none">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="400" y2="400" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#07152B" />
+      <stop offset="65%" stop-color="#102A43" />
+      <stop offset="100%" stop-color="#1C3A57" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0" y1="0" x2="400" y2="400" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#E5CBA1" />
+      <stop offset="50%" stop-color="#C5A46D" />
+      <stop offset="100%" stop-color="#9A7942" />
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" rx="200" fill="url(#bgGrad)" />
+  <circle cx="200" cy="200" r="186" stroke="url(#goldGrad)" stroke-width="2" stroke-opacity="0.6" />
+  <circle cx="200" cy="200" r="174" stroke="url(#goldGrad)" stroke-width="1" stroke-dasharray="4 6" stroke-opacity="0.35" />
+  <!-- Stylized botanical/dermatological flourish -->
+  <path d="M200 72C212 96 212 124 200 144C188 124 188 96 200 72Z" fill="url(#goldGrad)" fill-opacity="0.25" />
+  <!-- Monogram FC -->
+  <text x="200" y="232" text-anchor="middle" fill="#F7F5F1" font-family="Georgia, 'Times New Roman', serif" font-size="116" font-weight="500" letter-spacing="2">FC</text>
+  <line x1="130" y1="268" x2="270" y2="268" stroke="url(#goldGrad)" stroke-width="1.5" stroke-opacity="0.7" />
+  <text x="200" y="296" text-anchor="middle" fill="#C5A46D" font-family="system-ui, sans-serif" font-size="13" font-weight="600" letter-spacing="4">ENFERMAGEM DERMATOLÓGICA</text>
+</svg>
+

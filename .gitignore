@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js build output
+.next/
+out/
+build/
+
+# Local SQLite & WhatsApp Baileys Auth Session (Secrets / Runtime Data)
+data/
+whatsapp-session/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Environment variables & keys
+.env
+.env*.local
+serviceAccountKey.json
+firebase-service-account.json
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Misc
+.DS_Store
+*.pem
+.vercel
+*.tsbuildinfo
+next-env.d.ts
