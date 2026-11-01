@@ -1093,15 +1093,6 @@ export default function AdminSiteEditorPage() {
         />
       )}
 
-      {/* MODAL DE RECORTE DA FOTO DE PERFIL */}
-      {cropperSrc && (
-        <AvatarCropperModal
-          imageSrc={cropperSrc}
-          onCancel={() => setCropperSrc(null)}
-          onConfirm={handleConfirmCroppedAvatar}
-        />
-      )}
-
       {/* MODAL DE CRIAÇÃO / EDIÇÃO DE BOTÃO */}
       {showLinkModal && (
         <div className="fixed inset-0 z-50 bg-navy/70 backdrop-blur-sm flex items-center justify-center p-4">
