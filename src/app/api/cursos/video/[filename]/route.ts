@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import { getAdminSession, getStudentSession } from "@/lib/auth";
+import { getDb } from "@/lib/db";
+import { pullAllTablesFromTurso } from "@/lib/turso-sync";
 
 const VIDEOS_DIR = path.join(process.cwd(), "cursos-videos");
 
@@ -27,6 +29,29 @@ export async function GET(
     const filePath = path.join(VIDEOS_DIR, safeName);
 
     if (!fs.existsSync(filePath)) {
+      await pullAllTablesFromTurso();
+      const db = getDb();
+      const bridgeRow = db
+        .prepare("SELECT * FROM site_sections WHERE id = 'server_media_bridge'")
+        .get() as { id: string; title: string; subtitle: string } | undefined;
+
+      let mediaServerUrl = bridgeRow?.title || "";
+      if (!mediaServerUrl && bridgeRow?.subtitle) {
+        try {
+          const parsed = JSON.parse(bridgeRow.subtitle);
+          if (parsed.mediaServerUrl) mediaServerUrl = parsed.mediaServerUrl;
+        } catch {
+          // ignore
+        }
+      }
+
+      if (mediaServerUrl) {
+        return NextResponse.redirect(
+          `${mediaServerUrl}/videos/stream/${encodeURIComponent(safeName)}`,
+          307
+        );
+      }
+
       return NextResponse.json(
         {
           error: `Arquivo de vídeo "${safeName}" ainda não foi colocado na pasta cursos-videos do servidor.`,

@@ -38,6 +38,7 @@ export default function AdminCursosPage() {
   const [students, setStudents] = useState<CourseStudent[]>([]);
   const [localVideos, setLocalVideos] = useState<LocalVideoFile[]>([]);
   const [videosFolderPath, setVideosFolderPath] = useState("");
+  const [mediaServerUrl, setMediaServerUrl] = useState("");
   const [selectedCourseId, setSelectedCourseId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
@@ -114,6 +115,7 @@ export default function AdminCursosPage() {
       if (data.students) setStudents(data.students);
       if (data.localVideoFiles) setLocalVideos(data.localVideoFiles);
       if (data.videosFolderPath) setVideosFolderPath(data.videosFolderPath);
+      if (data.mediaServerUrl) setMediaServerUrl(data.mediaServerUrl);
       if (data.pageHeader) {
         setPageHeaderForm({
           title: data.pageHeader.title || "Cursos, Capacitações & Área de Alunos",
@@ -262,30 +264,120 @@ export default function AdminCursosPage() {
     if (!file) return;
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch("/api/admin/cursos/upload", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (res.ok && data.fileName) {
+      const isLocal =
+        typeof window !== "undefined" &&
+        (window.location.hostname === "localhost" ||
+          window.location.hostname === "127.0.0.1");
+
+      // Se a Ponte de Vídeos do Servidor estiver ativa (ou em localhost:3003), envia direto para a pasta cursos-videos do servidor sem limite de tamanho!
+      const directServerBase = isLocal
+        ? "http://localhost:3003"
+        : mediaServerUrl;
+
+      let uploadedData: {
+        fileName?: string;
+        sizeMB?: string;
+        error?: string;
+      } | null = null;
+
+      if (directServerBase) {
+        try {
+          const directRes = await fetch(
+            `${directServerBase}/videos/upload?filename=${encodeURIComponent(
+              file.name
+            )}`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": file.type || "video/mp4",
+              },
+              body: file,
+            }
+          );
+          if (directRes.ok) {
+            uploadedData = await directRes.json();
+          }
+        } catch {
+          // fallback para rota /api/admin/cursos/upload se estiver em localhost
+        }
+      }
+
+      if (!uploadedData && isLocal) {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch("/api/admin/cursos/upload", {
+          method: "POST",
+          body: formData,
+        });
+        uploadedData = await res.json();
+      }
+
+      if (uploadedData && uploadedData.fileName) {
         showNotification(
-          `Vídeo "${data.fileName}" (${data.sizeMB} MB) salvo na pasta cursos-videos!`
+          `Vídeo "${uploadedData.fileName}" (${uploadedData.sizeMB} MB) salvo diretamente na pasta cursos-videos do servidor!`
         );
         setLessonForm((prev) => ({
           ...prev,
           video_source_type: "local_file",
-          video_url: data.fileName,
+          video_url: uploadedData!.fileName!,
         }));
         loadData();
       } else {
-        alert(data.error || "Falha ao enviar vídeo.");
+        alert(
+          uploadedData?.error ||
+            "Não foi possível conectar ao servidor de vídeos. Verifique se o servidor local está ligado."
+        );
       }
     } finally {
       setUploading(false);
       e.target.value = "";
     }
+  }
+
+  async function handleDeleteVideoFile(fileName: string) {
+    if (
+      !window.confirm(
+        `Deseja apagar o arquivo de vídeo "${fileName}" da pasta cursos-videos do servidor?`
+      )
+    )
+      return;
+
+    const isLocal =
+      typeof window !== "undefined" &&
+      (window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1");
+    const directServerBase = isLocal ? "http://localhost:3003" : mediaServerUrl;
+
+    if (directServerBase) {
+      try {
+        await fetch(
+          `${directServerBase}/videos/delete?filename=${encodeURIComponent(
+            fileName
+          )}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ fileName }),
+          }
+        );
+      } catch {
+        // fallback via Turso queue
+      }
+    }
+
+    await fetch("/api/admin/cursos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "delete_video_file",
+        fileName,
+      }),
+    });
+
+    showNotification(
+      `Arquivo "${fileName}" excluído da pasta cursos-videos do servidor!`
+    );
+    loadData();
   }
 
   function buildStudentAccessMessage(st: CourseStudent) {
@@ -976,10 +1068,18 @@ export default function AdminCursosPage() {
                 Você pode colocar os arquivos `.mp4` diretamente na pasta do
                 computador/servidor ou enviar pelo botão ao lado.
               </p>
-              <p className="text-xs font-mono font-bold text-navy bg-offwhite px-3 py-1.5 rounded-lg border border-offwhite-border mt-2 inline-block">
-                📁 Caminho no Servidor:{" "}
-                {videosFolderPath || "cursos-videos/"}
-              </p>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <p className="text-xs font-mono font-bold text-navy bg-offwhite px-3 py-1.5 rounded-lg border border-offwhite-border inline-block">
+                  📁 Caminho no Servidor:{" "}
+                  {videosFolderPath || "cursos-videos/"}
+                </p>
+                {mediaServerUrl && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    Conectado em Tempo Real ao Servidor
+                  </span>
+                )}
+              </div>
             </div>
 
             <label className="cursor-pointer inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-terracotta hover:bg-terracotta-dark text-white text-xs sm:text-sm font-bold shadow-sm">
@@ -1032,6 +1132,15 @@ export default function AdminCursosPage() {
                       </p>
                     </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteVideoFile(v.name)}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-200 text-xs font-semibold transition-colors shrink-0"
+                    title="Apagar vídeo da pasta cursos-videos do servidor"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Apagar</span>
+                  </button>
                 </div>
               ))}
             </div>

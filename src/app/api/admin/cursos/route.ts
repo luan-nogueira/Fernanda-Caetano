@@ -85,12 +85,45 @@ export async function GET() {
         "Formações técnicas e práticas em Enfermagem Dermatológica, Manejo Avançado de Feridas, Laserterapia e Estética Avançada.",
     };
 
+    const bridgeRow = db
+      .prepare("SELECT * FROM site_sections WHERE id = 'server_media_bridge'")
+      .get() as
+      | { id: string; title: string; subtitle: string }
+      | undefined;
+
+    let mediaServerUrl = bridgeRow?.title || "";
+    let serverVideosFolderPath = VIDEOS_DIR;
+    let bridgeFiles: Array<{ name: string; sizeMB: string; updatedAt: string }> =
+      [];
+
+    if (bridgeRow?.subtitle) {
+      try {
+        const parsed = JSON.parse(bridgeRow.subtitle);
+        if (parsed.mediaServerUrl) mediaServerUrl = parsed.mediaServerUrl;
+        if (parsed.videosFolderPath)
+          serverVideosFolderPath = parsed.videosFolderPath;
+        if (Array.isArray(parsed.files)) bridgeFiles = parsed.files;
+      } catch {
+        // ignore
+      }
+    }
+
+    const diskFiles = listLocalVideoFiles();
+    const mergedMap = new Map<
+      string,
+      { name: string; sizeMB: string; updatedAt: string }
+    >();
+    for (const f of bridgeFiles) mergedMap.set(f.name, f);
+    for (const f of diskFiles) mergedMap.set(f.name, f);
+    const localVideoFiles = Array.from(mergedMap.values());
+
     return NextResponse.json({
       courses,
       lessons,
       students: studentsWithEnrollments,
-      localVideoFiles: listLocalVideoFiles(),
-      videosFolderPath: VIDEOS_DIR,
+      localVideoFiles,
+      videosFolderPath: serverVideosFolderPath,
+      mediaServerUrl,
       pageHeader,
     });
   } catch (err) {
@@ -115,14 +148,16 @@ export async function POST(req: NextRequest) {
     // 0. Salvar Cabeçalho da Página de Cursos
     if (body.action === "save_page_header") {
       db.prepare(
-        `INSERT INTO site_sections (id, title, subtitle, is_visible, display_order)
-         VALUES ('courses_page_header', ?, ?, 0, 99)
+        `INSERT INTO site_sections (id, title, subtitle, is_visible, sort_order, updated_at)
+         VALUES ('courses_page_header', ?, ?, 0, 99, ?)
          ON CONFLICT(id) DO UPDATE SET
            title = excluded.title,
-           subtitle = excluded.subtitle`
+           subtitle = excluded.subtitle,
+           updated_at = excluded.updated_at`
       ).run(
         body.title || "Cursos, Capacitações & Área de Alunos",
-        body.subtitle || ""
+        body.subtitle || "",
+        now
       );
       await pushAllTablesToTurso();
       return NextResponse.json({ success: true });
@@ -397,6 +432,66 @@ export async function POST(req: NextRequest) {
       db.prepare("DELETE FROM course_students WHERE id = ?").run(body.id);
       await pushAllTablesToTurso();
       return NextResponse.json({ success: true });
+    }
+
+    // 4. Excluir arquivo de vídeo da pasta cursos-videos no servidor
+    if (body.action === "delete_video_file" && body.fileName) {
+      const safeName = path.basename(String(body.fileName));
+      const localPath = path.join(VIDEOS_DIR, safeName);
+      if (fs.existsSync(localPath)) {
+        try {
+          fs.unlinkSync(localPath);
+        } catch {
+          // ignore
+        }
+      }
+
+      // Atualiza o snapshot de arquivos na ponte
+      const bridgeRow = db
+        .prepare("SELECT * FROM site_sections WHERE id = 'server_media_bridge'")
+        .get() as { id: string; title: string; subtitle: string } | undefined;
+
+      if (bridgeRow?.subtitle) {
+        try {
+          const parsed = JSON.parse(bridgeRow.subtitle);
+          if (Array.isArray(parsed.files)) {
+            parsed.files = parsed.files.filter(
+              (f: { name: string }) => f.name !== safeName
+            );
+            db.prepare(
+              "UPDATE site_sections SET subtitle = ? WHERE id = 'server_media_bridge'"
+            ).run(JSON.stringify(parsed));
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      // Registra comando na fila de exclusão para o servidor local apagar de cursos-videos imediatamente
+      const queueRow = db
+        .prepare(
+          "SELECT subtitle FROM site_sections WHERE id = 'server_videos_delete_queue'"
+        )
+        .get() as { subtitle: string } | undefined;
+      let currentQueue: string[] = [];
+      if (queueRow?.subtitle) {
+        try {
+          currentQueue = JSON.parse(queueRow.subtitle);
+        } catch {
+          currentQueue = [];
+        }
+      }
+      if (!currentQueue.includes(safeName)) {
+        currentQueue.push(safeName);
+      }
+      db.prepare(
+        `INSERT INTO site_sections (id, title, subtitle, is_visible, sort_order, updated_at)
+         VALUES ('server_videos_delete_queue', 'delete_queue', ?, 0, 998, ?)
+         ON CONFLICT(id) DO UPDATE SET subtitle = excluded.subtitle, updated_at = excluded.updated_at`
+      ).run(JSON.stringify(currentQueue), now);
+
+      await pushAllTablesToTurso();
+      return NextResponse.json({ success: true, deleted: safeName });
     }
 
     return NextResponse.json({ error: "Ação inválida." }, { status: 400 });

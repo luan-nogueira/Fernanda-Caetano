@@ -48,6 +48,7 @@ export default function CourseClassroomPage() {
   const [hasFullAccess, setHasFullAccess] = useState(false);
   const [completedIds, setCompletedIds] = useState<string[]>([]);
   const [activeLesson, setActiveLesson] = useState<CourseLesson | null>(null);
+  const [mediaServerUrl, setMediaServerUrl] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [videoMissingError, setVideoMissingError] = useState(false);
 
@@ -65,6 +66,7 @@ export default function CourseClassroomPage() {
           setActiveLesson(data.lessons[0]);
         }
       }
+      if (data.mediaServerUrl) setMediaServerUrl(data.mediaServerUrl);
       setHasFullAccess(Boolean(data.hasFullAccess));
       if (data.completedLessonIds) setCompletedIds(data.completedLessonIds);
     } finally {
@@ -116,14 +118,23 @@ export default function CourseClassroomPage() {
   const canWatchCurrentLesson =
     hasFullAccess || Boolean(activeLesson?.is_free_preview);
 
+  const isLocalhost =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1");
+
   const videoSource =
     activeLesson?.video_source_type === "local_file"
       ? {
           isIframe: false,
           src: activeLesson.video_url
-            ? `/api/cursos/video/${encodeURIComponent(
-                activeLesson.video_url
-              )}?preview=${activeLesson.is_free_preview ? "1" : "0"}`
+            ? !isLocalhost && mediaServerUrl
+              ? `${mediaServerUrl}/videos/stream/${encodeURIComponent(
+                  activeLesson.video_url
+                )}`
+              : `/api/cursos/video/${encodeURIComponent(
+                  activeLesson.video_url
+                )}?preview=${activeLesson.is_free_preview ? "1" : "0"}`
             : "",
         }
       : getEmbedUrl(activeLesson?.video_url || "");

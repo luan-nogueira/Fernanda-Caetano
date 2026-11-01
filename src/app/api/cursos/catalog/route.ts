@@ -14,6 +14,19 @@ export async function GET(req: NextRequest) {
     const studentSession = await getStudentSession();
     const adminSession = await getAdminSession();
 
+    const bridgeRow = db
+      .prepare("SELECT * FROM site_sections WHERE id = 'server_media_bridge'")
+      .get() as { id: string; title: string; subtitle: string } | undefined;
+    let mediaServerUrl = bridgeRow?.title || "";
+    if (!mediaServerUrl && bridgeRow?.subtitle) {
+      try {
+        const parsed = JSON.parse(bridgeRow.subtitle);
+        if (parsed.mediaServerUrl) mediaServerUrl = parsed.mediaServerUrl;
+      } catch {
+        // ignore
+      }
+    }
+
     let enrolledCourseIds: string[] = [];
     let completedLessonIds: string[] = [];
 
@@ -72,6 +85,7 @@ export async function GET(req: NextRequest) {
         course,
         lessons: sanitizedLessons,
         hasFullAccess,
+        mediaServerUrl,
         isAdminPreview: Boolean(adminSession && !studentSession),
         student: studentSession
           ? {

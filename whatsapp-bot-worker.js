@@ -19,6 +19,7 @@
 const path = require("path");
 const fs = require("fs");
 const http = require("http");
+const { spawn } = require("child_process");
 const { DatabaseSync } = require("node:sqlite");
 const QRCode = require("qrcode");
 
@@ -42,6 +43,7 @@ const cron = requireShared("node-cron");
 
 const DB_PATH = path.join(__dirname, "data", "fernanda_caetano.sqlite");
 const SESSION_DIR = path.join(__dirname, "whatsapp-session");
+const VIDEOS_DIR = path.join(__dirname, "cursos-videos");
 const BOT_PORT = Number(process.env.BOT_PORT || 3003);
 const TURSO_URL = (
   process.env.TURSO_DATABASE_URL ||
@@ -62,6 +64,96 @@ let clientSocket = null;
 let connectedPhone = null;
 let connectedName = null;
 let isSyncingTurso = false;
+let publicMediaServerUrl = "";
+let lastSyncedMediaFingerprint = "";
+
+function listServerVideoFiles() {
+  try {
+    if (!fs.existsSync(VIDEOS_DIR)) {
+      fs.mkdirSync(VIDEOS_DIR, { recursive: true });
+    }
+    const files = fs.readdirSync(VIDEOS_DIR);
+    return files
+      .filter((f) => /\.(mp4|webm|mov|m4v)$/i.test(f))
+      .map((f) => {
+        const st = fs.statSync(path.join(VIDEOS_DIR, f));
+        return {
+          name: f,
+          sizeMB: (st.size / (1024 * 1024)).toFixed(2),
+          updatedAt: st.mtime.toISOString(),
+        };
+      });
+  } catch {
+    return [];
+  }
+}
+
+async function publishMediaBridgeToTurso(force = false) {
+  try {
+    const files = listServerVideoFiles();
+    const payload = JSON.stringify({
+      mediaServerUrl: publicMediaServerUrl,
+      videosFolderPath: VIDEOS_DIR,
+      files,
+      updatedAt: new Date().toISOString(),
+    });
+    const fingerprint = `${publicMediaServerUrl}|${files
+      .map((f) => `${f.name}:${f.sizeMB}`)
+      .join(",")}`;
+    if (!force && fingerprint === lastSyncedMediaFingerprint) {
+      return;
+    }
+    lastSyncedMediaFingerprint = fingerprint;
+
+    const db = getDb();
+    if (!db) return;
+    try {
+      db.prepare(
+        `INSERT INTO site_sections (id, title, subtitle, is_visible, sort_order, updated_at)
+         VALUES ('server_media_bridge', ?, ?, 0, 999, ?)
+         ON CONFLICT(id) DO UPDATE SET
+           title = excluded.title,
+           subtitle = excluded.subtitle,
+           updated_at = excluded.updated_at`
+      ).run(publicMediaServerUrl || "", payload, new Date().toISOString());
+    } finally {
+      db.close();
+    }
+
+    await pushTablesToTurso(["site_sections"]);
+  } catch (err) {
+    console.error("Erro ao publicar ponte de vídeos no Turso:", err.message || err);
+  }
+}
+
+function startMediaTunnel() {
+  const cloudflaredPath = path.join(__dirname, "cloudflared.exe");
+  if (fs.existsSync(cloudflaredPath)) {
+    const proc = spawn(
+      cloudflaredPath,
+      ["tunnel", "--url", `http://localhost:${BOT_PORT}`, "--no-autoupdate"],
+      { windowsHide: true }
+    );
+
+    const onOutput = (chunk) => {
+      const text = chunk.toString();
+      const match = text.match(/https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com/);
+      if (match && match[0] !== publicMediaServerUrl) {
+        publicMediaServerUrl = match[0];
+        console.log(
+          `🌐 [Ponte de Vídeos Online] Servidor local conectado à Vercel via HTTPS: ${publicMediaServerUrl}`
+        );
+        publishMediaBridgeToTurso(true);
+      }
+    };
+
+    proc.stdout.on("data", onOutput);
+    proc.stderr.on("data", onOutput);
+    proc.on("close", () => {
+      setTimeout(startMediaTunnel, 5000);
+    });
+  }
+}
 
 function toHranaArg(val) {
   if (val === null || val === undefined) return { type: "null" };
@@ -148,7 +240,7 @@ async function syncWithTursoCloud() {
         )`,
       },
       {
-        sql: `SELECT table_name, rows_json FROM turso_state_snapshot WHERE table_name IN ('whatsapp_bot_config', 'whatsapp_message_logs', 'appointments')`,
+        sql: `SELECT table_name, rows_json FROM turso_state_snapshot WHERE table_name IN ('whatsapp_bot_config', 'whatsapp_message_logs', 'appointments', 'site_sections')`,
       },
     ]);
 
@@ -156,6 +248,7 @@ async function syncWithTursoCloud() {
     const db = getDb();
     if (!db) return;
 
+    let deletedAnyVideoFromQueue = false;
     try {
       db.exec("PRAGMA foreign_keys = OFF;");
       if (Array.isArray(rows) && rows.length > 0) {
@@ -166,7 +259,31 @@ async function syncWithTursoCloud() {
           const parsed = JSON.parse(rowsJson);
           if (!Array.isArray(parsed)) continue;
 
-          if (tableName === "whatsapp_bot_config" && parsed[0]) {
+          if (tableName === "site_sections") {
+            const deleteQueueRow = parsed.find(
+              (s) => s.id === "server_videos_delete_queue" && s.subtitle
+            );
+            if (deleteQueueRow && deleteQueueRow.subtitle) {
+              try {
+                const toDelete = JSON.parse(deleteQueueRow.subtitle);
+                if (Array.isArray(toDelete) && toDelete.length > 0) {
+                  for (const fname of toDelete) {
+                    const safeName = path.basename(String(fname));
+                    const targetPath = path.join(VIDEOS_DIR, safeName);
+                    if (fs.existsSync(targetPath)) {
+                      fs.unlinkSync(targetPath);
+                      console.log(
+                        `🗑️ [Ponte de Vídeos] Vídeo excluído da pasta cursos-videos por comando do Admin: ${safeName}`
+                      );
+                    }
+                  }
+                  deletedAnyVideoFromQueue = true;
+                }
+              } catch {
+                // ignore malformed json
+              }
+            }
+          } else if (tableName === "whatsapp_bot_config" && parsed[0]) {
             const remoteCfg = parsed[0];
             // Atualiza configurações de templates vindas da nuvem, mas preserva o status real do Baileys local
             db.prepare(
@@ -219,6 +336,24 @@ async function syncWithTursoCloud() {
     } finally {
       db.exec("PRAGMA foreign_keys = ON;");
       db.close();
+    }
+
+    if (deletedAnyVideoFromQueue) {
+      const dbClean = getDb();
+      if (dbClean) {
+        try {
+          dbClean
+            .prepare(
+              `DELETE FROM site_sections WHERE id = 'server_videos_delete_queue'`
+            )
+            .run();
+        } finally {
+          dbClean.close();
+        }
+      }
+      await publishMediaBridgeToTurso(true);
+    } else {
+      await publishMediaBridgeToTurso(false);
     }
 
     // Sempre empurra o whatsapp_bot_config atualizado (com QR Code ao vivo / status conectado) para o Turso
@@ -630,15 +765,188 @@ async function connectToWhatsApp() {
   }
 }
 
-// Servidor HTTP na porta 3003 (com API de controle local para o Painel Admin + visualização direta)
+// Servidor HTTP na porta 3003 (com API de controle local para o Painel Admin + Ponte de Vídeos cursos-videos)
 const server = http.createServer(async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, X-File-Name, Range"
+  );
+  res.setHeader(
+    "Access-Control-Expose-Headers",
+    "Content-Range, Accept-Ranges, Content-Length"
+  );
 
   if (req.method === "OPTIONS") {
     res.writeHead(204);
     res.end();
+    return;
+  }
+
+  const parsedUrl = new URL(req.url || "/", `http://localhost:${BOT_PORT}`);
+
+  // 1. Listar vídeos da pasta cursos-videos do servidor
+  if (parsedUrl.pathname === "/videos" && req.method === "GET") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({
+        files: listServerVideoFiles(),
+        videosFolderPath: VIDEOS_DIR,
+        mediaServerUrl: publicMediaServerUrl,
+      })
+    );
+    return;
+  }
+
+  // 2. Streaming de vídeo direto da pasta cursos-videos (suporta HTTP 206 Range para avançar/voltar vídeo)
+  if (
+    parsedUrl.pathname.startsWith("/videos/stream/") &&
+    req.method === "GET"
+  ) {
+    const rawName = decodeURIComponent(
+      parsedUrl.pathname.replace("/videos/stream/", "")
+    );
+    const safeName = path.basename(rawName);
+    const filePath = path.join(VIDEOS_DIR, safeName);
+
+    if (!fs.existsSync(filePath)) {
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Vídeo não encontrado no servidor." }));
+      return;
+    }
+
+    const stat = fs.statSync(filePath);
+    const fileSize = stat.size;
+    const range = req.headers.range;
+    const ext = path.extname(safeName).toLowerCase();
+    const contentType =
+      ext === ".webm"
+        ? "video/webm"
+        : ext === ".mov"
+        ? "video/quicktime"
+        : "video/mp4";
+
+    if (range) {
+      const parts = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1]
+        ? parseInt(parts[1], 10)
+        : Math.min(start + 2 * 1024 * 1024, fileSize - 1);
+      const chunksize = end - start + 1;
+
+      res.writeHead(206, {
+        "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+        "Accept-Ranges": "bytes",
+        "Content-Length": chunksize,
+        "Content-Type": contentType,
+      });
+      fs.createReadStream(filePath, { start, end }).pipe(res);
+      return;
+    }
+
+    res.writeHead(200, {
+      "Content-Length": fileSize,
+      "Content-Type": contentType,
+      "Accept-Ranges": "bytes",
+    });
+    fs.createReadStream(filePath).pipe(res);
+    return;
+  }
+
+  // 3. Upload direto de vídeo do computador da Dra. Fernanda para a pasta cursos-videos deste servidor
+  if (parsedUrl.pathname === "/videos/upload" && req.method === "POST") {
+    try {
+      if (!fs.existsSync(VIDEOS_DIR)) {
+        fs.mkdirSync(VIDEOS_DIR, { recursive: true });
+      }
+      const rawFileName =
+        parsedUrl.searchParams.get("filename") ||
+        req.headers["x-file-name"] ||
+        `aula-${Date.now()}.mp4`;
+      const safeFileName = path
+        .basename(decodeURIComponent(String(rawFileName)))
+        .replace(/[^a-zA-Z0-9._-]/g, "-");
+
+      const destPath = path.join(VIDEOS_DIR, safeFileName);
+      const writeStream = fs.createWriteStream(destPath);
+
+      req.pipe(writeStream);
+
+      writeStream.on("finish", async () => {
+        const st = fs.statSync(destPath);
+        const sizeMB = (st.size / (1024 * 1024)).toFixed(2);
+        console.log(
+          `📥 [Ponte de Vídeos] Novo vídeo salvo em cursos-videos: ${safeFileName} (${sizeMB} MB)`
+        );
+        await publishMediaBridgeToTurso(true);
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            success: true,
+            fileName: safeFileName,
+            sizeMB,
+            files: listServerVideoFiles(),
+          })
+        );
+      });
+
+      writeStream.on("error", (err) => {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            error: "Erro ao gravar vídeo no servidor: " + err.message,
+          })
+        );
+      });
+    } catch (err) {
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Falha no upload para o servidor." }));
+    }
+    return;
+  }
+
+  // 4. Excluir vídeo da pasta cursos-videos deste servidor
+  if (
+    parsedUrl.pathname === "/videos/delete" &&
+    (req.method === "POST" || req.method === "DELETE")
+  ) {
+    let bodyStr = "";
+    req.on("data", (chunk) => {
+      bodyStr += chunk.toString();
+    });
+    req.on("end", async () => {
+      try {
+        const parsed = bodyStr ? JSON.parse(bodyStr) : {};
+        const rawName =
+          parsed.fileName || parsedUrl.searchParams.get("filename") || "";
+        const safeName = path.basename(String(rawName));
+        if (!safeName) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Nome do arquivo não informado." }));
+          return;
+        }
+        const targetPath = path.join(VIDEOS_DIR, safeName);
+        if (fs.existsSync(targetPath)) {
+          fs.unlinkSync(targetPath);
+          console.log(
+            `🗑️ [Ponte de Vídeos] Arquivo removido de cursos-videos: ${safeName}`
+          );
+        }
+        await publishMediaBridgeToTurso(true);
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            success: true,
+            deleted: safeName,
+            files: listServerVideoFiles(),
+          })
+        );
+      } catch (err) {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Erro ao apagar vídeo do servidor." }));
+      }
+    });
     return;
   }
 
@@ -732,8 +1040,10 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(BOT_PORT, () => {
   console.log(
-    `🚀 Servidor do Bot WhatsApp (Dra. Fernanda Caetano) rodando na porta ${BOT_PORT} e sincronizado com Turso Cloud!`
+    `🚀 Servidor do Bot WhatsApp + Ponte de Vídeos (Dra. Fernanda Caetano) rodando na porta ${BOT_PORT} e sincronizado com Turso Cloud!`
   );
   connectToWhatsApp();
-  setInterval(syncWithTursoCloud, 5000);
+  startMediaTunnel();
+  publishMediaBridgeToTurso(true);
+  setInterval(syncWithTursoCloud, 4000);
 });
