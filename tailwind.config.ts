@@ -37,18 +37,18 @@ const config: Config = {
         offwhite: {
           DEFAULT: "#F7F5F1",
           pure: "#FFFFFF",
-          warm: "#EFECE6",
-          border: "#E5E0D8",
+          warm: "#EBE6DC",
+          border: "#D4CEC3",
         },
         gold: {
           DEFAULT: "#C5A46D",
           light: "#DBC296",
-          dark: "#A3834D",
+          dark: "#9A7840",
           50: "#FBF8F1",
           100: "#F4ECE0",
         },
         slate: {
-          DEFAULT: "#64748B",
+          DEFAULT: "#334155",
         },
       },
       fontFamily: {
@@ -56,9 +56,9 @@ const config: Config = {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],
       },
       boxShadow: {
-        luxury: "0 10px 30px -10px rgba(7, 21, 43, 0.08)",
-        "luxury-hover": "0 18px 36px -12px rgba(7, 21, 43, 0.14)",
-        card: "0 4px 20px -2px rgba(7, 21, 43, 0.05)",
+        luxury: "0 12px 32px -8px rgba(7, 21, 43, 0.14)",
+        "luxury-hover": "0 20px 40px -10px rgba(7, 21, 43, 0.22)",
+        card: "0 4px 20px -2px rgba(7, 21, 43, 0.09), 0 1px 3px 0 rgba(7, 21, 43, 0.06)",
       },
     },
   },

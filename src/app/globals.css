@@ -7,7 +7,7 @@
   --color-terracotta: #D97732;
   --color-offwhite: #F7F5F1;
   --color-gold: #C5A46D;
-  --color-slate: #64748B;
+  --color-slate: #334155;
 }
 
 html {
@@ -20,7 +20,14 @@ body {
   background-color: #F7F5F1;
   color: #07152B;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  font-variant-numeric: lining-nums tabular-nums;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, .font-serif {
+  font-variant-numeric: lining-nums tabular-nums;
+  letter-spacing: -0.015em;
 }
 
 /* Custom subtle scrollbars */

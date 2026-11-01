@@ -286,3 +286,44 @@ export async function PATCH(req: NextRequest) {
   }
 }
 
+export async function DELETE(req: NextRequest) {
+  try {
+    await requireAdminSession();
+    await pullAllTablesFromTurso(true);
+    const db = getDb();
+    const { searchParams } = new URL(req.url);
+    const clearDemo = searchParams.get("clearDemo") === "1";
+    const id = searchParams.get("id");
+
+    if (clearDemo) {
+      db.prepare("DELETE FROM whatsapp_message_logs WHERE appointment_id LIKE 'appt-demo-%'").run();
+      db.prepare("DELETE FROM appointments WHERE id LIKE 'appt-demo-%'").run();
+      db.prepare("DELETE FROM clients WHERE id LIKE 'client-demo-%' AND id NOT IN (SELECT DISTINCT client_id FROM appointments WHERE client_id IS NOT NULL)").run();
+      db.prepare("DELETE FROM notifications WHERE id LIKE 'notif-demo-%' OR related_appointment_id LIKE 'appt-demo-%'").run();
+      await pushAllTablesToTurso();
+      return NextResponse.json({ success: true, clearedDemo: true });
+    }
+
+    if (id) {
+      db.prepare("DELETE FROM whatsapp_message_logs WHERE appointment_id = ?").run(id);
+      db.prepare("DELETE FROM notifications WHERE related_appointment_id = ?").run(id);
+      db.prepare("DELETE FROM appointments WHERE id = ?").run(id);
+      await pushAllTablesToTurso();
+      return NextResponse.json({ success: true, deletedId: id });
+    }
+
+    return NextResponse.json(
+      { error: "Informe id ou clearDemo=1." },
+      { status: 400 }
+    );
+  } catch (err) {
+    if (err instanceof Error && err.message === "UNAUTHORIZED") {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    }
+    return NextResponse.json(
+      { error: "Erro ao remover agendamento." },
+      { status: 500 }
+    );
+  }
+}
+
