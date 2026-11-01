@@ -3,12 +3,12 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Loader2, Lock, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowLeft, Loader2, Lock, ShieldCheck } from "lucide-react";
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("admin@fernandacaetano.com.br");
-  const [password, setPassword] = useState("Fernanda@2026");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -93,6 +93,7 @@ export default function AdminLoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                placeholder="Digite seu e-mail administrativo"
                 className="w-full px-4 py-3 rounded-xl border border-offwhite-border bg-offwhite/50 focus:bg-white focus:border-navy focus:outline-none text-sm text-navy"
               />
             </div>
@@ -106,6 +107,7 @@ export default function AdminLoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
                 className="w-full px-4 py-3 rounded-xl border border-offwhite-border bg-offwhite/50 focus:bg-white focus:border-navy focus:outline-none text-sm text-navy"
               />
             </div>
@@ -126,14 +128,10 @@ export default function AdminLoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 pt-4 border-t border-offwhite-border text-[11px] text-slate text-center space-y-1">
-            <p className="flex items-center justify-center gap-1 font-medium text-navy">
-              <Sparkles className="w-3.5 h-3.5 text-gold-dark" />
-              <span>Ambiente de Desenvolvimento Pré-Configurado</span>
-            </p>
-            <p>
-              Credenciais iniciais preenchidas para avaliação imediata (alteráveis em{" "}
-              <code>/admin/configuracoes</code>).
+          <div className="mt-6 pt-4 border-t border-offwhite-border text-[11px] text-slate text-center">
+            <p className="flex items-center justify-center gap-1.5 font-medium text-navy">
+              <ShieldCheck className="w-3.5 h-3.5 text-gold-dark" />
+              <span>Acesso restrito e exclusivo à profissional responsável</span>
             </p>
           </div>
         </div>
