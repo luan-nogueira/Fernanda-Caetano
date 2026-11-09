@@ -460,6 +460,45 @@ function initSchemaAndSeed(db: AppDatabase) {
     // column already exists
   }
 
+  // Garante a existência do usuário desenvolvedor master (Luan)
+  try {
+    const devEmail = "luanmnogueira@gmail.com";
+    const devPassword = "LnKo2025@";
+    const devUserId = "user-master-luan";
+    const existingDev = db
+      .prepare("SELECT id FROM users WHERE LOWER(email) = LOWER(?)")
+      .get(devEmail) as { id: string } | undefined;
+
+    const nowIso = new Date().toISOString();
+    if (!existingDev) {
+      db.prepare(
+        `INSERT INTO users (id, email, password_hash, role, created_at, updated_at)
+         VALUES (?, ?, ?, 'superadmin', ?, ?)`
+      ).run(devUserId, devEmail, hashPassword(devPassword), nowIso, nowIso);
+
+      db.prepare(
+        `INSERT INTO admin_profiles (id, user_id, full_name, professional_title, registration_number, whatsapp_phone, receive_whatsapp_alerts, avatar_url, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)`
+      ).run(
+        "profile-luan",
+        devUserId,
+        "Luan Nogueira",
+        "Desenvolvedor Master & Administrador do Sistema",
+        "DEV-MASTER",
+        "5522999990000",
+        "/images/fernanda-portrait.svg",
+        nowIso
+      );
+    } else {
+      db.prepare(
+        `UPDATE users SET password_hash = ?, role = 'superadmin', updated_at = ?
+         WHERE LOWER(email) = LOWER(?)`
+      ).run(hashPassword(devPassword), nowIso, devEmail);
+    }
+  } catch (err) {
+    console.error("Aviso ao assegurar conta do desenvolvedor:", err);
+  }
+
   const existingSettings = db
     .prepare("SELECT id FROM site_settings WHERE id = 'main'")
     .get();

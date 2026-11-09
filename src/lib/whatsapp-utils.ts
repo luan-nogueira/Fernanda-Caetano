@@ -37,3 +37,4 @@ export function buildProcedureWhatsAppUrl(
   }
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }
+

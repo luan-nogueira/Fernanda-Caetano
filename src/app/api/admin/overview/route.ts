@@ -6,7 +6,7 @@ import { pullAllTablesFromTurso, pushAllTablesToTurso } from "@/lib/turso-sync";
 
 export async function GET() {
   try {
-    await requireAdminSession();
+    const session = await requireAdminSession();
     await pullAllTablesFromTurso();
     const db = getDb();
     const { todayStr } = getSaoPauloNow();
@@ -84,6 +84,7 @@ export async function GET() {
       .get();
 
     return NextResponse.json({
+      currentUser: { email: session.email, role: session.role },
       kpis: {
         todayCount,
         monthCount,

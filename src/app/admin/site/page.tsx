@@ -13,6 +13,7 @@ import {
 } from "@/types/domain";
 import { DynamicIcon, ICON_OPTIONS } from "@/components/DynamicIcon";
 import { AvatarCropperModal } from "@/components/AvatarCropperModal";
+import { DeveloperUnlockModal } from "@/components/DeveloperUnlockModal";
 import {
   ArrowDown,
   ArrowUp,
@@ -24,6 +25,7 @@ import {
   EyeOff,
   ExternalLink,
   GripVertical,
+  Lock,
   Palette,
   Plus,
   RotateCcw,
@@ -39,6 +41,13 @@ export default function AdminSiteEditorPage() {
   const [links, setLinks] = useState<CustomLink[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const [procedures, setProcedures] = useState<Procedure[]>([]);
+  const [currentUser, setCurrentUser] = useState<{
+    email: string;
+    role: string;
+  } | null>(null);
+  const [showDevModal, setShowDevModal] = useState(false);
+  const [devKey, setDevKey] = useState<string | null>(null);
+
   const [activeTab, setActiveTab] = useState<"links" | "profile" | "sections">(
     "links"
   );
@@ -90,6 +99,13 @@ export default function AdminSiteEditorPage() {
     if (data.links) setLinks(data.links);
     if (data.units) setUnits(data.units);
     if (data.procedures) setProcedures(data.procedures);
+    if (data.currentUser) setCurrentUser(data.currentUser);
+
+    const savedKey =
+      typeof window !== "undefined"
+        ? sessionStorage.getItem("fc_dev_unlocked_key")
+        : null;
+    if (savedKey) setDevKey(savedKey);
   }
 
   useEffect(() => {
@@ -383,64 +399,99 @@ export default function AdminSiteEditorPage() {
       )}
 
       {/* BARRA DE MODO DE OPERAÇÃO (WHATSAPP DIRETO VS AGENDA ONLINE) */}
-      {settings && (
-        <div className="p-4 rounded-2xl bg-navy text-offwhite border border-gold/30 flex flex-wrap items-center justify-between gap-3 shadow-md">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gold/20 flex items-center justify-center shrink-0">
-              <Sparkles className="w-5 h-5 text-gold" />
+      {settings && (() => {
+        const isSuperAdmin =
+          currentUser?.role === "superadmin" ||
+          currentUser?.email?.toLowerCase() === "luanmnogueira@gmail.com" ||
+          Boolean(devKey);
+
+        return (
+          <div className="p-4 rounded-2xl bg-navy text-offwhite border border-gold/30 flex flex-wrap items-center justify-between gap-3 shadow-md">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-gold/20 flex items-center justify-center shrink-0">
+                <Sparkles className="w-5 h-5 text-gold" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-gold">
+                    Modo de Operação do Site
+                  </p>
+                  {isSuperAdmin ? (
+                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                      👑 DEV MASTER
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-gold border border-gold/30">
+                      🔒 RESTRITO AO DESENVOLVEDOR
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs sm:text-sm font-medium text-offwhite mt-0.5">
+                  {settings.booking_mode === "whatsapp_direct"
+                    ? "🟢 Modo Essencial (WhatsApp Direto) — Procedimentos direcionam ao WhatsApp oficial"
+                    : "🟣 Modo Completo (Agenda Online) — Calendário integrado de vagas e horários ativo"}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-gold">
-                Modo de Operação do Site
-              </p>
-              <p className="text-xs sm:text-sm font-medium text-offwhite">
-                {settings.booking_mode === "whatsapp_direct"
-                  ? "🟢 Modo Essencial (WhatsApp Direto) — Botões e procedimentos direcionam para o WhatsApp oficial"
-                  : "🟣 Modo Completo (Agenda Online) — Calendário integrado de vagas e horários ativo"}
-              </p>
+
+            <div className="flex items-center gap-2">
+              {isSuperAdmin ? (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const nextMode =
+                      settings.booking_mode === "whatsapp_direct"
+                        ? "automatic"
+                        : "whatsapp_direct";
+                    const res = await fetch("/api/admin/site", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        action: "toggle_booking_mode",
+                        booking_mode: nextMode,
+                        developer_key: devKey || undefined,
+                      }),
+                    });
+                    const data = await res.json();
+                    if (!res.ok) {
+                      showSuccessToast(data.error || "Erro ao alterar modo.");
+                      return;
+                    }
+                    setSettings({ ...settings, booking_mode: nextMode });
+                    showSuccessToast(
+                      nextMode === "whatsapp_direct"
+                        ? "Modo Essencial (WhatsApp Direto) ativado com sucesso!"
+                        : "Modo Agenda Online Completa ativado com sucesso!"
+                    );
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-gold hover:bg-gold-light text-navy font-semibold text-xs transition-colors shadow-sm"
+                >
+                  Alternar para{" "}
+                  {settings.booking_mode === "whatsapp_direct"
+                    ? "Agenda Online"
+                    : "WhatsApp Direto"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowDevModal(true)}
+                  className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-gold border border-gold/30 font-semibold text-xs transition-colors shadow-sm flex items-center gap-1.5"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>Alterar Plano (Apenas Desenvolvedor)</span>
+                </button>
+              )}
+
+              <Link
+                href="/admin/configuracoes"
+                className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-offwhite text-xs font-medium border border-gold/20"
+              >
+                Configurar →
+              </Link>
             </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={async () => {
-                const nextMode =
-                  settings.booking_mode === "whatsapp_direct"
-                    ? "automatic"
-                    : "whatsapp_direct";
-                await fetch("/api/admin/site", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    action: "toggle_booking_mode",
-                    booking_mode: nextMode,
-                  }),
-                });
-                setSettings({ ...settings, booking_mode: nextMode });
-                showSuccessToast(
-                  nextMode === "whatsapp_direct"
-                    ? "Modo Essencial (WhatsApp Direto) ativado com sucesso!"
-                    : "Modo Agenda Online Completa ativado com sucesso!"
-                );
-              }}
-              className="px-3.5 py-2 rounded-xl bg-gold hover:bg-gold-light text-navy font-semibold text-xs transition-colors shadow-sm"
-            >
-              Alternar para{" "}
-              {settings.booking_mode === "whatsapp_direct"
-                ? "Agenda Online"
-                : "WhatsApp Direto"}
-            </button>
-
-            <Link
-              href="/admin/configuracoes"
-              className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-offwhite text-xs font-medium border border-gold/20"
-            >
-              Configurar →
-            </Link>
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Abas do Editor */}
       <div className="flex flex-wrap items-center gap-2 border-b border-offwhite-border pb-3">
@@ -1432,6 +1483,15 @@ export default function AdminSiteEditorPage() {
           </div>
         </div>
       )}
+
+      <DeveloperUnlockModal
+        isOpen={showDevModal}
+        onClose={() => setShowDevModal(false)}
+        onSuccess={(key) => {
+          setDevKey(key);
+          showSuccessToast("Acesso do Desenvolvedor liberado nesta sessão!");
+        }}
+      />
     </div>
   );
 }

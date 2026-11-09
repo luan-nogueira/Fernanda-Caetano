@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { SiteSettings } from "@/types/domain";
 import { AvatarCropperModal } from "@/components/AvatarCropperModal";
+import { DeveloperUnlockModal } from "@/components/DeveloperUnlockModal";
 import {
   Camera,
   Check,
@@ -14,6 +15,7 @@ import {
   CalendarCheck,
   Sparkles,
   ExternalLink,
+  ShieldAlert,
 } from "lucide-react";
 
 export default function AdminConfiguracoesPage() {
@@ -26,6 +28,13 @@ export default function AdminConfiguracoesPage() {
     receive_whatsapp_alerts: number;
     email: string;
   } | null>(null);
+  const [currentUser, setCurrentUser] = useState<{
+    email: string;
+    role: string;
+  } | null>(null);
+  const [showDevModal, setShowDevModal] = useState(false);
+  const [devKey, setDevKey] = useState<string | null>(null);
+
   const [newPassword, setNewPassword] = useState("");
   const [toast, setToast] = useState<string | null>(null);
   const [cropperSrc, setCropperSrc] = useState<string | null>(null);
@@ -73,6 +82,13 @@ export default function AdminConfiguracoesPage() {
     ]).then(([siteData, ovData]) => {
       if (siteData.settings) setSettings(siteData.settings);
       if (ovData.adminProfile) setProfile(ovData.adminProfile);
+      if (siteData.currentUser) setCurrentUser(siteData.currentUser);
+      else if (ovData.currentUser) setCurrentUser(ovData.currentUser);
+
+      const savedKey = typeof window !== "undefined"
+        ? sessionStorage.getItem("fc_dev_unlocked_key")
+        : null;
+      if (savedKey) setDevKey(savedKey);
     });
   }, []);
 
@@ -81,14 +97,28 @@ export default function AdminConfiguracoesPage() {
     setTimeout(() => setToast(null), 3500);
   }
 
+  const isSuperAdmin =
+    currentUser?.role === "superadmin" ||
+    currentUser?.email?.toLowerCase() === "luanmnogueira@gmail.com" ||
+    Boolean(devKey);
+
   async function handleSaveBookingRules(e: React.FormEvent) {
     e.preventDefault();
     if (!settings) return;
-    await fetch("/api/admin/site", {
+    const res = await fetch("/api/admin/site", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "publish_settings", settings }),
+      body: JSON.stringify({
+        action: "publish_settings",
+        settings,
+        developer_key: devKey || undefined,
+      }),
     });
+    const data = await res.json();
+    if (!res.ok) {
+      notify(data.error || "Erro ao salvar configurações.");
+      return;
+    }
     notify("Configurações e modo de operação salvos com sucesso!");
   }
 
@@ -151,23 +181,51 @@ export default function AdminConfiguracoesPage() {
               Modo de Operação do Site (Plano do Assinante)
             </h2>
           </div>
-          <span className="text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-white/10 text-gold border border-gold/30">
-            {isWhatsappDirect ? "🟢 Modo Essencial Ativo" : "🟣 Modo Completo Ativo"}
-          </span>
+          {isSuperAdmin ? (
+            <span className="text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">
+              👑 Desenvolvedor Master ({currentUser?.email || "Luan"})
+            </span>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-white/10 text-gold border border-gold/30">
+                🔒 Gerenciado pelo Desenvolvedor
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowDevModal(true)}
+                className="text-[11px] text-gold hover:text-white underline-offset-4 hover:underline font-semibold"
+              >
+                🔑 Desbloquear
+              </button>
+            </div>
+          )}
         </div>
 
+        {!isSuperAdmin && (
+          <div className="p-3.5 rounded-2xl bg-white/[0.05] border border-gold/20 text-xs text-offwhite/85 leading-relaxed">
+            <span className="font-semibold text-gold">Plano Essencial Ativo:</span> Todos os agendamentos e procedimentos são direcionados diretamente para o WhatsApp oficial com a mensagem pronta. A ativação da Agenda Online Completa e Robô é restrita ao desenvolvedor responsável (Luan Nogueira).
+          </div>
+        )}
+
         <p className="text-xs sm:text-sm text-offwhite/85 leading-relaxed">
-          Você pode bloquear ou desbloquear funcionalidades a qualquer momento.
-          Selecione abaixo como você deseja que os clientes agendem os atendimentos no site:
+          {isSuperAdmin
+            ? "Como Desenvolvedor Master, você pode alternar entre os modos abaixo a qualquer momento:"
+            : "Status dos planos disponíveis na infraestrutura do site:"}
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
           {/* Card 1: Modo Essencial (WhatsApp Direto) */}
           <div
-            onClick={() =>
-              setSettings({ ...settings, booking_mode: "whatsapp_direct" })
-            }
-            className={`p-5 rounded-2xl border cursor-pointer transition-all ${
+            onClick={() => {
+              if (!isSuperAdmin) {
+                setShowDevModal(true);
+                return;
+              }
+              setSettings({ ...settings, booking_mode: "whatsapp_direct" });
+            }}
+            className={`p-5 rounded-2xl border transition-all ${
+              isSuperAdmin ? "cursor-pointer" : "cursor-default"
+            } ${
               isWhatsappDirect
                 ? "bg-gradient-to-br from-gold/25 via-gold/10 to-transparent border-gold text-white shadow-md ring-2 ring-gold"
                 : "bg-white/5 border-white/10 hover:border-gold/40 text-offwhite/70"
@@ -197,16 +255,22 @@ export default function AdminConfiguracoesPage() {
 
           {/* Card 2: Modo Completo (Agenda Online + Robô Baileys) */}
           <div
-            onClick={() =>
+            onClick={() => {
+              if (!isSuperAdmin) {
+                setShowDevModal(true);
+                return;
+              }
               setSettings({
                 ...settings,
                 booking_mode:
                   settings.booking_mode === "whatsapp_direct"
                     ? "automatic"
                     : settings.booking_mode,
-              })
-            }
-            className={`p-5 rounded-2xl border cursor-pointer transition-all ${
+              });
+            }}
+            className={`p-5 rounded-2xl border transition-all ${
+              isSuperAdmin ? "cursor-pointer" : "cursor-pointer"
+            } ${
               !isWhatsappDirect
                 ? "bg-gradient-to-br from-gold/25 via-gold/10 to-transparent border-gold text-white shadow-md ring-2 ring-gold"
                 : "bg-white/5 border-white/10 hover:border-gold/40 text-offwhite/70"
@@ -218,7 +282,7 @@ export default function AdminConfiguracoesPage() {
                 Modo Avançado (Agenda Online + Bot)
               </span>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-400/30">
-                Completo
+                {!isSuperAdmin ? "🔒 Bloqueado" : "Completo"}
               </span>
             </div>
             <p className="text-xs leading-relaxed text-offwhite/90">
@@ -231,6 +295,12 @@ export default function AdminConfiguracoesPage() {
               <li>✓ Bloqueio de horários passados e simultâneos</li>
               <li>✓ Confirmações e lembretes automatizados</li>
             </ul>
+            {!isSuperAdmin && (
+              <p className="text-[11px] text-gold font-semibold mt-3 pt-2 border-t border-white/10 flex items-center gap-1">
+                <Lock className="w-3.5 h-3.5" />
+                <span>Toque para desbloquear como Desenvolvedor</span>
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -590,6 +660,15 @@ export default function AdminConfiguracoesPage() {
         imageSrc={cropperSrc}
         onClose={() => setCropperSrc(null)}
         onConfirmCrop={handleConfirmCroppedAvatar}
+      />
+
+      <DeveloperUnlockModal
+        isOpen={showDevModal}
+        onClose={() => setShowDevModal(false)}
+        onSuccess={(key) => {
+          setDevKey(key);
+          notify("Modo Desenvolvedor liberado com sucesso para esta sessão!");
+        }}
       />
     </div>
   );

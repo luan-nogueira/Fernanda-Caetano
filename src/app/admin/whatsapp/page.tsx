@@ -28,10 +28,20 @@ export default function AdminWhatsAppBotPage() {
   const [pairingPhone, setPairingPhone] = useState("5522999990001");
   const [testPhone, setTestPhone] = useState("5522999990001");
   const [testName, setTestName] = useState("Mariana Silva (Teste)");
+  const [isWhatsappDirect, setIsWhatsappDirect] = useState(false);
 
   async function loadBotData() {
-    const res = await fetch("/api/admin/whatsapp");
+    const [res, siteRes] = await Promise.all([
+      fetch("/api/admin/whatsapp"),
+      fetch("/api/admin/site"),
+    ]);
     const data = await res.json();
+    const siteData = await siteRes.json();
+
+    if (siteData.settings?.booking_mode === "whatsapp_direct") {
+      setIsWhatsappDirect(true);
+    }
+
     if (data.config) {
       setConfig(data.config);
       setPairingPhone(data.config.professional_phone || "5522999990001");
@@ -193,6 +203,26 @@ export default function AdminWhatsAppBotPage() {
           </button>
         </div>
       </div>
+
+      {isWhatsappDirect && (
+        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs sm:text-sm flex items-start gap-3 shadow-sm">
+          <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
+            <MessageCircle className="w-4 h-4 text-amber-700" />
+          </div>
+          <div className="min-w-0">
+            <p className="font-semibold text-amber-950">
+              Plano Essencial Ativo (WhatsApp Direto)
+            </p>
+            <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
+              No momento, todos os procedimentos e agendamentos do site direcionam
+              diretamente para o aplicativo do WhatsApp oficial da Dra. Fernanda, sem
+              necessidade de manter o robô pareado ou ativo. Quando você solicitar o
+              upgrade para o Plano Avançado, este módulo de robô automático será reativado
+              pelo desenvolvedor responsável (Luan Nogueira).
+            </p>
+          </div>
+        </div>
+      )}
 
       {feedback && (
         <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs sm:text-sm font-semibold flex items-center gap-2">

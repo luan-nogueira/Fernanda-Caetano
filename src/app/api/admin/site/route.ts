@@ -6,7 +6,7 @@ import crypto from "crypto";
 
 export async function GET() {
   try {
-    await requireAdminSession();
+    const session = await requireAdminSession();
     await pullAllTablesFromTurso();
     const db = getDb();
 
@@ -29,6 +29,7 @@ export async function GET() {
       .all();
 
     return NextResponse.json({
+      currentUser: { email: session.email, role: session.role },
       settings,
       sections,
       links,
@@ -48,11 +49,15 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    await requireAdminSession();
+    const session = await requireAdminSession();
     await pullAllTablesFromTurso(true);
     const db = getDb();
     const body = await req.json();
     const now = new Date().toISOString();
+
+    const isSuperAdmin =
+      session.role === "superadmin" ||
+      session.email.toLowerCase() === "luanmnogueira@gmail.com";
 
     // 0. Atualizar Foto de Perfil recortada (Estilo WhatsApp) em todo o sistema
     const nextAvatar = body.avatar_url || body.avatarUrl;
@@ -101,6 +106,28 @@ export async function POST(req: NextRequest) {
     // 2. Publicar configurações do site
     if (body.action === "publish_settings") {
       const s = body.settings;
+      const validKeys = [
+        (process.env.DEVELOPER_MASTER_KEY || "Luan@2026").trim(),
+        "Luan@2026",
+        "2026",
+      ];
+      const enteredKey = String(body.developer_key || "").trim();
+
+      // Proteção de Plano: se o modo atual for whatsapp_direct e o usuário tentar mudar para online sem a chave do desenvolvedor, mantém bloqueado!
+      const currentSettings = db
+        .prepare("SELECT booking_mode FROM site_settings WHERE id = 'main'")
+        .get() as { booking_mode?: string } | undefined;
+
+      let finalBookingMode = s.booking_mode || "whatsapp_direct";
+      if (
+        currentSettings?.booking_mode === "whatsapp_direct" &&
+        finalBookingMode !== "whatsapp_direct" &&
+        !isSuperAdmin &&
+        !validKeys.includes(enteredKey)
+      ) {
+        finalBookingMode = "whatsapp_direct";
+      }
+
       db.prepare(
         `UPDATE site_settings
          SET professional_name = ?,
@@ -140,7 +167,7 @@ export async function POST(req: NextRequest) {
         s.accent_color || "#D97732",
         s.background_color || "#F7F5F1",
         s.gold_color || "#C5A46D",
-        s.booking_mode || "automatic",
+        finalBookingMode,
         s.online_booking_enabled ? 1 : 0,
         s.whatsapp_direct_phone || null,
         s.whatsapp_direct_message_template || null,
@@ -159,12 +186,34 @@ export async function POST(req: NextRequest) {
         ).run(s.avatar_url, now);
       }
       await pushAllTablesToTurso();
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true, booking_mode: finalBookingMode });
     }
 
     // 2.1 Alternar modo de operação (Essencial WhatsApp vs Agenda Online Completa)
     if (body.action === "toggle_booking_mode") {
       const targetMode = body.booking_mode || "whatsapp_direct";
+      const validKeys = [
+        (process.env.DEVELOPER_MASTER_KEY || "Luan@2026").trim(),
+        "Luan@2026",
+        "2026",
+      ];
+      const enteredKey = String(body.developer_key || "").trim();
+
+      // Se tentar ativar a Agenda Online / Robô sem a chave mestra do Luan e não for Superadmin, rejeita!
+      if (
+        targetMode !== "whatsapp_direct" &&
+        !isSuperAdmin &&
+        !validKeys.includes(enteredKey)
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Acesso negado: Apenas o desenvolvedor responsável (Luan) pode desbloquear o Modo Avançado (Agenda Online & Robô).",
+          },
+          { status: 403 }
+        );
+      }
+
       const targetPhone = body.whatsapp_direct_phone;
       const targetMsg = body.whatsapp_direct_message_template;
       db.prepare(
