@@ -449,6 +449,17 @@ function initSchemaAndSeed(db: AppDatabase) {
 
   seedCoursesModuleIfNeeded(db);
 
+  try {
+    db.exec("ALTER TABLE site_settings ADD COLUMN whatsapp_direct_phone TEXT");
+  } catch {
+    // column already exists
+  }
+  try {
+    db.exec("ALTER TABLE site_settings ADD COLUMN whatsapp_direct_message_template TEXT");
+  } catch {
+    // column already exists
+  }
+
   const existingSettings = db
     .prepare("SELECT id FROM site_settings WHERE id = 'main'")
     .get();

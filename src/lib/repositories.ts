@@ -101,20 +101,50 @@ export function getProcedureBySlug(slug: string): Procedure | null {
   return bundle.procedures.find((p) => p.slug === slug) || null;
 }
 
+export {
+  resolveDirectWhatsAppPhone,
+  buildProcedureWhatsAppUrl,
+} from "./whatsapp-utils";
+import {
+  resolveDirectWhatsAppPhone,
+  buildProcedureWhatsAppUrl,
+} from "./whatsapp-utils";
+
 export function resolveCustomLinkHref(
   link: CustomLink,
   units: Unit[],
-  procedures: Procedure[]
+  procedures: Procedure[],
+  settings?: SiteSettings
 ): { href: string; external: boolean } {
+  const isWhatsappDirect = settings?.booking_mode === "whatsapp_direct";
+  const defaultPhone = resolveDirectWhatsAppPhone(settings, units);
+
   switch (link.destination_type) {
-    case "booking":
+    case "booking": {
+      if (isWhatsappDirect) {
+        return {
+          href: buildProcedureWhatsAppUrl(defaultPhone, null),
+          external: true,
+        };
+      }
       return { href: link.destination_value || "/agendar", external: false };
+    }
     case "procedure": {
       const proc = procedures.find(
         (p) =>
           p.slug === link.destination_value || p.id === link.destination_value
       );
       if (proc) {
+        if (isWhatsappDirect) {
+          return {
+            href: buildProcedureWhatsAppUrl(
+              defaultPhone,
+              proc.name,
+              settings?.whatsapp_direct_message_template
+            ),
+            external: true,
+          };
+        }
         return {
           href: `/agendar?procedimento=${encodeURIComponent(proc.slug)}`,
           external: false,

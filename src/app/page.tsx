@@ -3,11 +3,14 @@ import Link from "next/link";
 import {
   getPublicSiteBundle,
   resolveCustomLinkHref,
+  resolveDirectWhatsAppPhone,
+  buildProcedureWhatsAppUrl,
 } from "@/lib/repositories";
 import { pullAllTablesFromTurso } from "@/lib/turso-sync";
 import { DynamicIcon } from "@/components/DynamicIcon";
 import { ShareProfileButton } from "@/components/ShareProfileButton";
 import { PublicFooter } from "@/components/PublicFooter";
+import { HomeWhatsAppExperience } from "@/components/HomeWhatsAppExperience";
 import {
   ArrowRight,
   ChevronRight,
@@ -31,6 +34,9 @@ export default async function HomePage({
   await pullAllTablesFromTurso();
   const bundle = getPublicSiteBundle({ previewDraft: isPreview });
   const { settings, sections, links, units, procedures } = bundle;
+
+  const isWhatsappDirect = settings.booking_mode === "whatsapp_direct";
+  const directPhone = resolveDirectWhatsAppPhone(settings, units);
 
   const visibleSections = sections.filter((s) => Boolean(s.is_visible));
 
@@ -82,10 +88,20 @@ export default async function HomePage({
                 />
               </div>
               <span
-                title="Agendamento Online Disponível"
-                className="absolute bottom-1 right-1 w-6 h-6 rounded-full bg-terracotta border-2 border-navy flex items-center justify-center shadow-sm"
+                title={
+                  isWhatsappDirect
+                    ? "Atendimento Oficial no WhatsApp Disponível"
+                    : "Agendamento Online Disponível"
+                }
+                className={`absolute bottom-1 right-1 w-6 h-6 rounded-full border-2 border-navy flex items-center justify-center shadow-sm ${
+                  isWhatsappDirect ? "bg-emerald-600" : "bg-terracotta"
+                }`}
               >
-                <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                {isWhatsappDirect ? (
+                  <MessageCircle className="w-3.5 h-3.5 text-white" />
+                ) : (
+                  <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                )}
               </span>
             </div>
 
@@ -106,6 +122,15 @@ export default async function HomePage({
 
       {/* CONTEÚDO PRINCIPAL ORDENADO DINAMICAMENTE PELAS SEÇÕES */}
       <main className="flex-1 max-w-xl sm:max-w-2xl lg:max-w-3xl w-full mx-auto px-4 sm:px-6 -mt-6 pb-16 space-y-12 relative z-10">
+        {/* MODO ESSENCIAL: EXPERIÊNCIA DEDICADA DE WHATSAPP + APRESENTAÇÃO DO MÉTODO */}
+        {isWhatsappDirect && (
+          <HomeWhatsAppExperience
+            settings={settings}
+            procedures={procedures}
+            units={units}
+          />
+        )}
+
         {visibleSections.map((section) => {
           // SEÇÃO 1: BOTÕES PRINCIPAIS DA PÁGINA PÚBLICA
           if (section.id === "links") {
@@ -115,32 +140,52 @@ export default async function HomePage({
                   const { href, external } = resolveCustomLinkHref(
                     link,
                     units,
-                    procedures
+                    procedures,
+                    settings
                   );
 
                   const isPrimaryCta = link.style_variant === "primary_cta";
                   const isNavy = link.style_variant === "navy";
                   const isGoldOutline = link.style_variant === "outline_gold";
 
-                  const cardClasses = isPrimaryCta
-                    ? "bg-terracotta hover:bg-terracotta-dark text-white border-terracotta shadow-luxury hover:shadow-luxury-hover"
-                    : isNavy
-                    ? "bg-navy hover:bg-navy-800 text-offwhite border-gold/30 shadow-card hover:shadow-luxury"
-                    : isGoldOutline
-                    ? "bg-white hover:bg-gold-50/60 text-navy border-gold/60 shadow-card hover:shadow-luxury"
-                    : "bg-white hover:bg-offwhite-warm/60 text-navy border-offwhite-border shadow-card hover:shadow-luxury";
+                  const displayTitle =
+                    isWhatsappDirect && link.destination_type === "booking"
+                      ? "Agendar Atendimento no WhatsApp"
+                      : link.title;
 
-                  const iconBoxClasses = isPrimaryCta
-                    ? "bg-white/20 text-white"
-                    : isNavy
-                    ? "bg-white/10 text-gold"
-                    : "bg-navy/5 text-navy group-hover:bg-terracotta/10 group-hover:text-terracotta";
+                  const displaySubtitle =
+                    isWhatsappDirect && link.destination_type === "booking"
+                      ? "Fale direto com a Dra. Fernanda para agendamentos e dúvidas"
+                      : link.subtitle;
 
-                  const subtitleClasses = isPrimaryCta
-                    ? "text-white/90"
-                    : isNavy
-                    ? "text-offwhite/75"
-                    : "text-slate";
+                  const cardClasses =
+                    isPrimaryCta && isWhatsappDirect
+                      ? "bg-gradient-to-r from-[#DFBA73] via-[#F4E1B5] to-[#C99C4B] hover:brightness-105 text-[#141A28] border-gold/40 shadow-luxury hover:shadow-luxury-hover"
+                      : isPrimaryCta
+                      ? "bg-terracotta hover:bg-terracotta-dark text-white border-terracotta shadow-luxury hover:shadow-luxury-hover"
+                      : isNavy
+                      ? "bg-navy hover:bg-navy-800 text-offwhite border-gold/30 shadow-card hover:shadow-luxury"
+                      : isGoldOutline
+                      ? "bg-white hover:bg-gold-50/60 text-navy border-gold/60 shadow-card hover:shadow-luxury"
+                      : "bg-white hover:bg-offwhite-warm/60 text-navy border-offwhite-border shadow-card hover:shadow-luxury";
+
+                  const iconBoxClasses =
+                    isPrimaryCta && isWhatsappDirect
+                      ? "bg-black/15 text-[#141A28]"
+                      : isPrimaryCta
+                      ? "bg-white/20 text-white"
+                      : isNavy
+                      ? "bg-white/10 text-gold"
+                      : "bg-navy/5 text-navy group-hover:bg-terracotta/10 group-hover:text-terracotta";
+
+                  const subtitleClasses =
+                    isPrimaryCta && isWhatsappDirect
+                      ? "text-[#141A28]/80 font-medium"
+                      : isPrimaryCta
+                      ? "text-white/90"
+                      : isNavy
+                      ? "text-offwhite/75"
+                      : "text-slate";
 
                   const content = (
                     <div
@@ -150,33 +195,43 @@ export default async function HomePage({
                         <div
                           className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-colors ${iconBoxClasses}`}
                         >
-                          <DynamicIcon
-                            name={link.icon_name}
-                            className="w-5 h-5"
-                          />
+                          {isWhatsappDirect && link.destination_type === "booking" ? (
+                            <MessageCircle className="w-5 h-5 fill-current text-[#141A28]" />
+                          ) : (
+                            <DynamicIcon
+                              name={link.icon_name}
+                              className="w-5 h-5"
+                            />
+                          )}
                         </div>
                         <div className="min-w-0 text-left">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-semibold text-sm sm:text-base leading-snug">
-                              {link.title}
+                              {displayTitle}
                             </span>
-                            {link.badge_text && (
-                              <span
-                                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                                  isPrimaryCta
-                                    ? "bg-white/25 text-white"
-                                    : "bg-gold/20 text-navy border border-gold/40"
-                                }`}
-                              >
-                                {link.badge_text}
+                            {isWhatsappDirect && link.destination_type === "booking" ? (
+                              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-black/15 text-[#141A28]">
+                                WHATSAPP
                               </span>
+                            ) : (
+                              link.badge_text && (
+                                <span
+                                  className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                                    isPrimaryCta
+                                      ? "bg-white/25 text-white"
+                                      : "bg-gold/20 text-navy border border-gold/40"
+                                  }`}
+                                >
+                                  {link.badge_text}
+                                </span>
+                              )
                             )}
                           </div>
-                          {link.subtitle && (
+                          {displaySubtitle && (
                             <p
                               className={`text-xs mt-0.5 leading-relaxed ${subtitleClasses}`}
                             >
-                              {link.subtitle}
+                              {displaySubtitle}
                             </p>
                           )}
                         </div>
@@ -185,7 +240,9 @@ export default async function HomePage({
                       <div className="shrink-0">
                         <ChevronRight
                           className={`w-5 h-5 transition-transform duration-200 group-hover:translate-x-1 ${
-                            isPrimaryCta
+                            isPrimaryCta && isWhatsappDirect
+                              ? "text-[#141A28]"
+                              : isPrimaryCta
                               ? "text-white"
                               : isNavy
                               ? "text-gold"
@@ -282,15 +339,31 @@ export default async function HomePage({
                         >
                           Saiba mais
                         </Link>
-                        <Link
-                          href={`/agendar?procedimento=${encodeURIComponent(
-                            proc.slug
-                          )}`}
-                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-navy hover:bg-terracotta text-white text-[11px] font-medium tracking-wide transition-colors"
-                        >
-                          <span>Agendar</span>
-                          <ArrowRight className="w-3 h-3" />
-                        </Link>
+                        {isWhatsappDirect ? (
+                          <a
+                            href={buildProcedureWhatsAppUrl(
+                              directPhone,
+                              proc.name,
+                              settings.whatsapp_direct_message_template
+                            )}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#DFBA73] via-[#F2DEB0] to-[#C99C4B] hover:brightness-105 text-[#141A28] text-[11px] font-semibold tracking-wide transition-all shadow-sm"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5 fill-current text-[#141A28]" />
+                            <span>Agendar no WhatsApp</span>
+                          </a>
+                        ) : (
+                          <Link
+                            href={`/agendar?procedimento=${encodeURIComponent(
+                              proc.slug
+                            )}`}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-navy hover:bg-terracotta text-white text-[11px] font-medium tracking-wide transition-colors"
+                          >
+                            <span>Agendar</span>
+                            <ArrowRight className="w-3 h-3" />
+                          </Link>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -377,15 +450,29 @@ export default async function HomePage({
                             )}
                           </div>
 
-                          <Link
-                            href={`/agendar?unidade=${encodeURIComponent(
-                              unit.slug
-                            )}`}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-terracotta hover:bg-terracotta-dark text-white text-xs font-semibold transition-colors"
-                          >
-                            <span>Agendar nesta unidade</span>
-                            <ArrowRight className="w-3.5 h-3.5" />
-                          </Link>
+                          {isWhatsappDirect ? (
+                            <a
+                              href={`https://wa.me/${waDigits || directPhone}?text=${encodeURIComponent(
+                                `Olá! Gostaria de informações e agendamento para a unidade: ${unit.name}.`
+                              )}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#DFBA73] via-[#F2DEB0] to-[#C99C4B] hover:brightness-105 text-[#141A28] text-xs font-semibold transition-all shadow-sm"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5 fill-current text-[#141A28]" />
+                              <span>Agendar no WhatsApp desta unidade</span>
+                            </a>
+                          ) : (
+                            <Link
+                              href={`/agendar?unidade=${encodeURIComponent(
+                                unit.slug
+                              )}`}
+                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-terracotta hover:bg-terracotta-dark text-white text-xs font-semibold transition-colors"
+                            >
+                              <span>Agendar nesta unidade</span>
+                              <ArrowRight className="w-3.5 h-3.5" />
+                            </Link>
+                          )}
                         </div>
                       </div>
                     );
@@ -436,13 +523,29 @@ export default async function HomePage({
                       <span>Conhecer trajetória completa</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </Link>
-                    <Link
-                      href="/agendar"
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-terracotta hover:bg-terracotta-dark text-white text-xs font-semibold transition-colors"
-                    >
-                      <span>Agendar avaliação</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
+                    {isWhatsappDirect ? (
+                      <a
+                        href={buildProcedureWhatsAppUrl(
+                          directPhone,
+                          null,
+                          "Olá, Dra. Fernanda! Vi sua apresentação no site e gostaria de agendar uma avaliação."
+                        )}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-[#DFBA73] via-[#F2DEB0] to-[#C99C4B] hover:brightness-105 text-[#141A28] text-xs font-semibold transition-all shadow-sm"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5 fill-current text-[#141A28]" />
+                        <span>Agendar avaliação no WhatsApp</span>
+                      </a>
+                    ) : (
+                      <Link
+                        href="/agendar"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-terracotta hover:bg-terracotta-dark text-white text-xs font-semibold transition-colors"
+                      >
+                        <span>Agendar avaliação</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    )}
                   </div>
                 </div>
               </section>

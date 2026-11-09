@@ -1,6 +1,10 @@
 import React from "react";
 import Link from "next/link";
-import { getPublicSiteBundle } from "@/lib/repositories";
+import {
+  getPublicSiteBundle,
+  resolveDirectWhatsAppPhone,
+  buildProcedureWhatsAppUrl,
+} from "@/lib/repositories";
 import { pullAllTablesFromTurso } from "@/lib/turso-sync";
 import { PublicHeaderNav } from "@/components/PublicHeaderNav";
 import { PublicFooter } from "@/components/PublicFooter";
@@ -11,6 +15,7 @@ import {
   Home,
   Sparkles,
   CheckCircle2,
+  MessageCircle,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +30,11 @@ function formatPriceBRL(cents: number | null, show: boolean | number) {
 
 export default async function ProcedimentosPage() {
   await pullAllTablesFromTurso();
-  const { settings, categories, procedures } = getPublicSiteBundle();
+  const bundle = getPublicSiteBundle();
+  const { settings, categories, procedures, units } = bundle;
+
+  const isWhatsappDirect = settings.booking_mode === "whatsapp_direct";
+  const directPhone = resolveDirectWhatsAppPhone(settings, units);
 
   return (
     <div className="min-h-screen flex flex-col bg-offwhite">
@@ -138,7 +147,21 @@ export default async function ProcedimentosPage() {
                           Ver detalhes e orientações
                         </Link>
 
-                        {Boolean(proc.online_booking_enabled) ? (
+                        {isWhatsappDirect ? (
+                          <a
+                            href={buildProcedureWhatsAppUrl(
+                              directPhone,
+                              proc.name,
+                              settings.whatsapp_direct_message_template
+                            )}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-[#DFBA73] via-[#F2DEB0] to-[#C99C4B] hover:brightness-105 text-[#141A28] text-xs font-semibold shadow-sm transition-all"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5 fill-current text-[#141A28]" />
+                            <span>Agendar no WhatsApp</span>
+                          </a>
+                        ) : Boolean(proc.online_booking_enabled) ? (
                           <Link
                             href={`/agendar?procedimento=${encodeURIComponent(
                               proc.slug
@@ -176,13 +199,25 @@ export default async function ProcedimentosPage() {
               </p>
             </div>
           </div>
-          <Link
-            href="/agendar"
-            className="shrink-0 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-terracotta hover:bg-terracotta-dark text-white text-xs font-semibold transition-all"
-          >
-            <span>Iniciar agendamento</span>
-            <ArrowRight className="w-4 h-4" />
-          </Link>
+          {isWhatsappDirect ? (
+            <a
+              href={buildProcedureWhatsAppUrl(directPhone, null)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#DFBA73] via-[#F2DEB0] to-[#C99C4B] hover:brightness-105 text-[#141A28] text-xs font-semibold transition-all"
+            >
+              <MessageCircle className="w-4 h-4 fill-current text-[#141A28]" />
+              <span>Falar com a Dra. Fernanda</span>
+            </a>
+          ) : (
+            <Link
+              href="/agendar"
+              className="shrink-0 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-terracotta hover:bg-terracotta-dark text-white text-xs font-semibold transition-all"
+            >
+              <span>Iniciar agendamento</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          )}
         </div>
       </main>
 

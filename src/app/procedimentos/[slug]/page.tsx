@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import {
   getProcedureBySlug,
   getPublicSiteBundle,
+  resolveDirectWhatsAppPhone,
+  buildProcedureWhatsAppUrl,
 } from "@/lib/repositories";
 import { pullAllTablesFromTurso } from "@/lib/turso-sync";
 import { PublicHeaderNav } from "@/components/PublicHeaderNav";
@@ -14,6 +16,7 @@ import {
   Clock,
   Info,
   MapPin,
+  MessageCircle,
   ShieldCheck,
 } from "lucide-react";
 
@@ -32,7 +35,9 @@ export default async function ProcedimentoDetalhePage({
     notFound();
   }
 
-  const { settings } = getPublicSiteBundle();
+  const { settings, units } = getPublicSiteBundle();
+  const isWhatsappDirect = settings.booking_mode === "whatsapp_direct";
+  const directPhone = resolveDirectWhatsAppPhone(settings, units);
 
   return (
     <div className="min-h-screen flex flex-col bg-offwhite">
@@ -108,15 +113,29 @@ export default async function ProcedimentoDetalhePage({
                       <p className="text-sm font-semibold text-navy">{u.name}</p>
                       <p className="text-xs text-slate">{u.neighborhood_city}</p>
                     </div>
-                    <Link
-                      href={`/agendar?procedimento=${encodeURIComponent(
-                        proc.slug
-                      )}&unidade=${encodeURIComponent(u.slug)}`}
-                      className="text-xs font-semibold text-terracotta hover:underline inline-flex items-center gap-1"
-                    >
-                      <span>Escolher</span>
-                      <ArrowRight className="w-3 h-3" />
-                    </Link>
+                    {isWhatsappDirect ? (
+                      <a
+                        href={`https://wa.me/${u.whatsapp_phone ? u.whatsapp_phone.replace(/\D/g, "") : directPhone}?text=${encodeURIComponent(
+                          `Olá, Dra. Fernanda! Gostaria de informações e agendamento para *${proc.name}* na unidade *${u.name}*.`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-semibold text-terracotta hover:underline inline-flex items-center gap-1"
+                      >
+                        <span>Agendar WhatsApp</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </a>
+                    ) : (
+                      <Link
+                        href={`/agendar?procedimento=${encodeURIComponent(
+                          proc.slug
+                        )}&unidade=${encodeURIComponent(u.slug)}`}
+                        className="text-xs font-semibold text-terracotta hover:underline inline-flex items-center gap-1"
+                      >
+                        <span>Escolher</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </Link>
+                    )}
                   </div>
                 ))}
               </div>
@@ -127,20 +146,38 @@ export default async function ProcedimentoDetalhePage({
             <div className="flex items-center gap-2 text-xs text-slate">
               <ShieldCheck className="w-4 h-4 text-gold-dark shrink-0" />
               <span>
-                {Boolean(proc.requires_approval) ||
-                proc.modality === "domiciliar"
+                {isWhatsappDirect
+                  ? "Atendimento humanizado direto no WhatsApp oficial com a Dra. Fernanda."
+                  : Boolean(proc.requires_approval) ||
+                    proc.modality === "domiciliar"
                   ? "Solicitação sujeita à confirmação rápida da profissional."
                   : "Disponibilidade integrada em tempo real com a agenda."}
               </span>
             </div>
 
-            <Link
-              href={`/agendar?procedimento=${encodeURIComponent(proc.slug)}`}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-terracotta hover:bg-terracotta-dark text-white text-sm font-semibold shadow-luxury transition-all"
-            >
-              <CalendarCheck className="w-4 h-4" />
-              <span>Agendar este procedimento</span>
-            </Link>
+            {isWhatsappDirect ? (
+              <a
+                href={buildProcedureWhatsAppUrl(
+                  directPhone,
+                  proc.name,
+                  settings.whatsapp_direct_message_template
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-full bg-gradient-to-r from-[#DFBA73] via-[#F4E1B5] to-[#C99C4B] hover:brightness-105 active:scale-[0.99] text-[#121927] text-sm font-semibold shadow-luxury transition-all text-center"
+              >
+                <MessageCircle className="w-4 h-4 fill-current text-[#121927]" />
+                <span>Agendar este procedimento no WhatsApp</span>
+              </a>
+            ) : (
+              <Link
+                href={`/agendar?procedimento=${encodeURIComponent(proc.slug)}`}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-terracotta hover:bg-terracotta-dark text-white text-sm font-semibold shadow-luxury transition-all"
+              >
+                <CalendarCheck className="w-4 h-4" />
+                <span>Agendar este procedimento</span>
+              </Link>
+            )}
           </div>
         </div>
       </main>

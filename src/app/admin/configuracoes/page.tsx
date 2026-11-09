@@ -3,7 +3,18 @@
 import React, { useEffect, useRef, useState } from "react";
 import { SiteSettings } from "@/types/domain";
 import { AvatarCropperModal } from "@/components/AvatarCropperModal";
-import { Camera, Check, Lock, Save, Settings, ShieldCheck } from "lucide-react";
+import {
+  Camera,
+  Check,
+  Lock,
+  Save,
+  Settings,
+  ShieldCheck,
+  MessageCircle,
+  CalendarCheck,
+  Sparkles,
+  ExternalLink,
+} from "lucide-react";
 
 export default function AdminConfiguracoesPage() {
   const [settings, setSettings] = useState<SiteSettings | null>(null);
@@ -78,7 +89,7 @@ export default function AdminConfiguracoesPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "publish_settings", settings }),
     });
-    notify("Regras gerais de agendamento e privacidade salvas!");
+    notify("Configurações e modo de operação salvos com sucesso!");
   }
 
   async function handleSaveProfile(e: React.FormEvent) {
@@ -105,6 +116,10 @@ export default function AdminConfiguracoesPage() {
     );
   }
 
+  const isWhatsappDirect = settings.booking_mode === "whatsapp_direct";
+  const currentDirectPhone =
+    settings.whatsapp_direct_phone || profile.whatsapp_phone || "5522999990000";
+
   return (
     <div className="space-y-6">
       <div>
@@ -115,8 +130,8 @@ export default function AdminConfiguracoesPage() {
           Configurações do Sistema
         </h1>
         <p className="text-xs sm:text-sm text-slate mt-0.5">
-          Controle o modo de confirmação de agendamentos, antecedência mínima,
-          política LGPD e senha de acesso.
+          Alterne entre o Modo Essencial (WhatsApp Direto) e o Modo Agenda Completa,
+          configure a política de privacidade e credenciais de acesso.
         </p>
       </div>
 
@@ -127,8 +142,101 @@ export default function AdminConfiguracoesPage() {
         </div>
       )}
 
+      {/* SELETOR PRINCIPAL DE MODO DE OPERAÇÃO DO SITE */}
+      <div className="bg-navy text-offwhite rounded-3xl p-6 sm:p-7 border border-gold/40 shadow-luxury space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-gold" />
+            <h2 className="font-serif text-xl sm:text-2xl font-semibold text-offwhite">
+              Modo de Operação do Site (Plano do Assinante)
+            </h2>
+          </div>
+          <span className="text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-white/10 text-gold border border-gold/30">
+            {isWhatsappDirect ? "🟢 Modo Essencial Ativo" : "🟣 Modo Completo Ativo"}
+          </span>
+        </div>
+
+        <p className="text-xs sm:text-sm text-offwhite/85 leading-relaxed">
+          Você pode bloquear ou desbloquear funcionalidades a qualquer momento.
+          Selecione abaixo como você deseja que os clientes agendem os atendimentos no site:
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+          {/* Card 1: Modo Essencial (WhatsApp Direto) */}
+          <div
+            onClick={() =>
+              setSettings({ ...settings, booking_mode: "whatsapp_direct" })
+            }
+            className={`p-5 rounded-2xl border cursor-pointer transition-all ${
+              isWhatsappDirect
+                ? "bg-gradient-to-br from-gold/25 via-gold/10 to-transparent border-gold text-white shadow-md ring-2 ring-gold"
+                : "bg-white/5 border-white/10 hover:border-gold/40 text-offwhite/70"
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-gold uppercase tracking-wider">
+                <MessageCircle className="w-4 h-4" />
+                Modo Essencial (WhatsApp Direto)
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                Econômico • Sem Robô
+              </span>
+            </div>
+            <p className="text-xs leading-relaxed text-offwhite/90">
+              <strong>Ideal para baratear custos:</strong> Desativa a necessidade do
+              robô/bot de WhatsApp e do motor complexo de calendário. Todos os
+              procedimentos abrem o WhatsApp da Dra. Fernanda com a mensagem pronta.
+            </p>
+            <ul className="text-[11px] text-offwhite/75 mt-3 space-y-1">
+              <li>✓ Apresentação &quot;O Método Dra. Fernanda Caetano&quot; ativa</li>
+              <li>✓ Catálogo e explicações de procedimentos ativos</li>
+              <li>✓ <strong>Área de Cursos & Alunos 100% ativa</strong></li>
+              <li>✓ Zero custo de servidor contínuo de bot</li>
+            </ul>
+          </div>
+
+          {/* Card 2: Modo Completo (Agenda Online + Robô Baileys) */}
+          <div
+            onClick={() =>
+              setSettings({
+                ...settings,
+                booking_mode:
+                  settings.booking_mode === "whatsapp_direct"
+                    ? "automatic"
+                    : settings.booking_mode,
+              })
+            }
+            className={`p-5 rounded-2xl border cursor-pointer transition-all ${
+              !isWhatsappDirect
+                ? "bg-gradient-to-br from-gold/25 via-gold/10 to-transparent border-gold text-white shadow-md ring-2 ring-gold"
+                : "bg-white/5 border-white/10 hover:border-gold/40 text-offwhite/70"
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-gold uppercase tracking-wider">
+                <CalendarCheck className="w-4 h-4" />
+                Modo Avançado (Agenda Online + Bot)
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-400/30">
+                Completo
+              </span>
+            </div>
+            <p className="text-xs leading-relaxed text-offwhite/90">
+              <strong>Automação Completa:</strong> Ativa o calendário de vagas com
+              escolha de horários, salas, bloqueios e disparo automático de
+              confirmações e lembretes via robô de WhatsApp.
+            </p>
+            <ul className="text-[11px] text-offwhite/75 mt-3 space-y-1">
+              <li>✓ Calendário de vagas online interativo</li>
+              <li>✓ Bloqueio de horários passados e simultâneos</li>
+              <li>✓ Confirmações e lembretes automatizados</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-        {/* Regras do Motor de Agendamento */}
+        {/* Parâmetros do Modo Escolhido */}
         <form
           onSubmit={handleSaveBookingRules}
           className="bg-white rounded-3xl p-6 border border-offwhite-border shadow-card space-y-4"
@@ -136,105 +244,173 @@ export default function AdminConfiguracoesPage() {
           <div className="flex items-center gap-2 border-b border-offwhite-border pb-3">
             <Settings className="w-5 h-5 text-terracotta" />
             <h2 className="font-serif text-2xl font-semibold text-navy">
-              Motor de Agendamento Online
+              {isWhatsappDirect
+                ? "Parâmetros do WhatsApp Direto"
+                : "Motor de Agendamento Online"}
             </h2>
           </div>
 
-          <label className="flex items-center gap-2.5 text-sm font-semibold text-navy cursor-pointer p-3.5 rounded-2xl bg-offwhite">
-            <input
-              type="checkbox"
-              checked={Boolean(settings.online_booking_enabled)}
-              onChange={(e) =>
-                setSettings({
-                  ...settings,
-                  online_booking_enabled: e.target.checked ? 1 : 0,
-                })
-              }
-              className="w-4 h-4 accent-terracotta"
-            />
-            <span>Receber agendamentos online pela página pública</span>
-          </label>
+          {isWhatsappDirect ? (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-navy mb-1">
+                  Número de WhatsApp para Receber Agendamentos
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={settings.whatsapp_direct_phone || profile.whatsapp_phone}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        whatsapp_direct_phone: e.target.value,
+                      })
+                    }
+                    placeholder="Ex: 5522999990000"
+                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-offwhite-border text-sm text-navy font-mono"
+                  />
+                  <a
+                    href={`https://wa.me/${(
+                      settings.whatsapp_direct_phone || profile.whatsapp_phone
+                    ).replace(/\D/g, "")}?text=${encodeURIComponent(
+                      "Olá Dra. Fernanda! Teste de link do WhatsApp direto do site."
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3.5 py-2.5 rounded-xl bg-offwhite hover:bg-gold-50 text-navy text-xs font-semibold border border-offwhite-border flex items-center gap-1.5"
+                    title="Testar no WhatsApp"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 text-terracotta" />
+                    <span>Testar</span>
+                  </a>
+                </div>
+                <p className="text-[11px] text-slate mt-1">
+                  Informe o DDI + DDD + Número (apenas números ou formatado).
+                </p>
+              </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-navy mb-1">
-              Modo Padrão de Confirmação
-            </label>
-            <select
-              value={settings.booking_mode}
-              onChange={(e) =>
-                setSettings({
-                  ...settings,
-                  booking_mode: e.target.value as "automatic" | "approval",
-                })
-              }
-              className="w-full px-3.5 py-2.5 rounded-xl border border-offwhite-border text-sm text-navy"
-            >
-              <option value="automatic">
-                Confirmação Automática (Exceto Home Care)
-              </option>
-              <option value="approval">
-                Solicitação Pendente de Aprovação pela Profissional
-              </option>
-            </select>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-navy mb-1">
-                Antecedência mín. (h)
-              </label>
-              <input
-                type="number"
-                min={0}
-                value={settings.min_advance_hours}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    min_advance_hours: Number(e.target.value),
-                  })
-                }
-                className="w-full px-3 py-2 rounded-xl border border-offwhite-border text-sm text-navy"
-              />
+              <div>
+                <label className="block text-xs font-semibold text-navy mb-1">
+                  Mensagem Modelo Pré-Preenchida no WhatsApp
+                </label>
+                <textarea
+                  rows={3}
+                  value={
+                    settings.whatsapp_direct_message_template ||
+                    "Olá, Dra. Fernanda! Vi o seu site e gostaria de agendar / saber mais sobre: *{procedimento}*."
+                  }
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      whatsapp_direct_message_template: e.target.value,
+                    })
+                  }
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-offwhite-border text-xs text-navy"
+                />
+                <p className="text-[11px] text-slate mt-1">
+                  Use <code>&#123;procedimento&#125;</code> para que o site insira automaticamente o nome do procedimento escolhido.
+                </p>
+              </div>
             </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-navy mb-1">
-                Limite máx. (dias)
+          ) : (
+            <div className="space-y-4">
+              <label className="flex items-center gap-2.5 text-sm font-semibold text-navy cursor-pointer p-3.5 rounded-2xl bg-offwhite">
+                <input
+                  type="checkbox"
+                  checked={Boolean(settings.online_booking_enabled)}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      online_booking_enabled: e.target.checked ? 1 : 0,
+                    })
+                  }
+                  className="w-4 h-4 accent-terracotta"
+                />
+                <span>Receber agendamentos online pela página pública</span>
               </label>
-              <input
-                type="number"
-                min={7}
-                value={settings.max_advance_days}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    max_advance_days: Number(e.target.value),
-                  })
-                }
-                className="w-full px-3 py-2 rounded-xl border border-offwhite-border text-sm text-navy"
-              />
-            </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-navy mb-1">
-                Escala slots (min)
-              </label>
-              <select
-                value={settings.slot_interval_minutes}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    slot_interval_minutes: Number(e.target.value),
-                  })
-                }
-                className="w-full px-3 py-2 rounded-xl border border-offwhite-border text-sm text-navy"
-              >
-                <option value={15}>15 min</option>
-                <option value={30}>30 min</option>
-                <option value={60}>60 min</option>
-              </select>
+              <div>
+                <label className="block text-xs font-semibold text-navy mb-1">
+                  Modo de Confirmação da Agenda
+                </label>
+                <select
+                  value={settings.booking_mode}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      booking_mode: e.target.value as "automatic" | "approval",
+                    })
+                  }
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-offwhite-border text-sm text-navy"
+                >
+                  <option value="automatic">
+                    Confirmação Automática (Exceto Home Care)
+                  </option>
+                  <option value="approval">
+                    Solicitação Pendente de Aprovação pela Profissional
+                  </option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-navy mb-1">
+                    Antecedência mín. (h)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={settings.min_advance_hours}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        min_advance_hours: Number(e.target.value),
+                      })
+                    }
+                    className="w-full px-3 py-2 rounded-xl border border-offwhite-border text-sm text-navy"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-navy mb-1">
+                    Limite máx. (dias)
+                  </label>
+                  <input
+                    type="number"
+                    min={7}
+                    value={settings.max_advance_days}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        max_advance_days: Number(e.target.value),
+                      })
+                    }
+                    className="w-full px-3 py-2 rounded-xl border border-offwhite-border text-sm text-navy"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-navy mb-1">
+                    Escala slots (min)
+                  </label>
+                  <select
+                    value={settings.slot_interval_minutes}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        slot_interval_minutes: Number(e.target.value),
+                      })
+                    }
+                    className="w-full px-3 py-2 rounded-xl border border-offwhite-border text-sm text-navy"
+                  >
+                    <option value={15}>15 min</option>
+                    <option value={30}>30 min</option>
+                    <option value={60}>60 min</option>
+                  </select>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
 
           <div>
             <label className="block text-xs font-semibold text-navy mb-1 flex items-center gap-1">
@@ -242,7 +418,7 @@ export default function AdminConfiguracoesPage() {
               <span>Texto da Política de Privacidade & LGPD</span>
             </label>
             <textarea
-              rows={4}
+              rows={3}
               value={settings.privacy_policy_text}
               onChange={(e) =>
                 setSettings({
@@ -256,10 +432,10 @@ export default function AdminConfiguracoesPage() {
 
           <button
             type="submit"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-terracotta hover:bg-terracotta-dark text-white text-xs font-semibold shadow-sm"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-terracotta hover:bg-terracotta-dark text-white text-xs font-semibold shadow-sm transition-all"
           >
             <Save className="w-4 h-4" />
-            <span>Salvar Regras de Agendamento</span>
+            <span>Salvar Configurações</span>
           </button>
         </form>
 
@@ -299,33 +475,24 @@ export default function AdminConfiguracoesPage() {
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-terracotta hover:bg-terracotta-dark text-white text-xs font-semibold"
               >
                 <Camera className="w-3.5 h-3.5" />
-                <span>Alterar e Recortar Foto</span>
+                <span>Escolher Nova Foto</span>
               </button>
+              <p className="text-[11px] text-slate">
+                Você pode recortar e ajustar o zoom no formato circular perfeito.
+              </p>
             </div>
             <input
               ref={avatarInputRef}
               type="file"
               accept="image/*"
-              onChange={handleSelectAvatarFile}
               className="hidden"
+              onChange={handleSelectAvatarFile}
             />
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-navy mb-1">
-              E-mail de Login
-            </label>
-            <input
-              type="email"
-              disabled
-              value={profile.email}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-offwhite-border bg-offwhite text-sm text-slate"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-navy mb-1">
-              Nome Completo da Profissional
+              Nome Completo
             </label>
             <input
               type="text"
@@ -339,37 +506,81 @@ export default function AdminConfiguracoesPage() {
 
           <div>
             <label className="block text-xs font-semibold text-navy mb-1">
-              Registro Profissional (COREN)
+              Título Profissional
             </label>
             <input
               type="text"
-              value={profile.registration_number || ""}
+              value={profile.professional_title}
               onChange={(e) =>
-                setProfile({ ...profile, registration_number: e.target.value })
+                setProfile({ ...profile, professional_title: e.target.value })
               }
               className="w-full px-3.5 py-2.5 rounded-xl border border-offwhite-border text-sm text-navy"
             />
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-navy mb-1">
+                Registro COREN
+              </label>
+              <input
+                type="text"
+                value={profile.registration_number || ""}
+                onChange={(e) =>
+                  setProfile({
+                    ...profile,
+                    registration_number: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 rounded-xl border border-offwhite-border text-sm text-navy"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-navy mb-1">
+                WhatsApp Principal
+              </label>
+              <input
+                type="text"
+                value={profile.whatsapp_phone}
+                onChange={(e) =>
+                  setProfile({ ...profile, whatsapp_phone: e.target.value })
+                }
+                className="w-full px-3 py-2 rounded-xl border border-offwhite-border text-sm text-navy font-mono"
+              />
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-semibold text-navy mb-1">
-              Alterar Senha Administrativa (Deixe em branco para manter a atual)
+              E-mail de Login
+            </label>
+            <input
+              type="email"
+              value={profile.email}
+              disabled
+              className="w-full px-3.5 py-2.5 rounded-xl border border-offwhite-border text-sm text-slate bg-offwhite/50"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-navy mb-1">
+              Nova Senha (deixe em branco para manter a atual)
             </label>
             <input
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Nova senha (mínimo 6 caracteres)"
+              placeholder="••••••••"
               className="w-full px-3.5 py-2.5 rounded-xl border border-offwhite-border text-sm text-navy"
             />
           </div>
 
           <button
             type="submit"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-navy hover:bg-navy-800 text-offwhite text-xs font-semibold"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-navy hover:bg-navy-800 text-offwhite text-xs font-semibold shadow-sm transition-all"
           >
             <Save className="w-4 h-4 text-gold" />
-            <span>Atualizar Perfil e Senha</span>
+            <span>Atualizar Perfil & Credenciais</span>
           </button>
         </form>
       </div>

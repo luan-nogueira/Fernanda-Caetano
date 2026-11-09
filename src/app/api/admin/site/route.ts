@@ -116,6 +116,8 @@ export async function POST(req: NextRequest) {
              gold_color = ?,
              booking_mode = ?,
              online_booking_enabled = ?,
+             whatsapp_direct_phone = ?,
+             whatsapp_direct_message_template = ?,
              min_advance_hours = ?,
              max_advance_days = ?,
              slot_interval_minutes = ?,
@@ -140,6 +142,8 @@ export async function POST(req: NextRequest) {
         s.gold_color || "#C5A46D",
         s.booking_mode || "automatic",
         s.online_booking_enabled ? 1 : 0,
+        s.whatsapp_direct_phone || null,
+        s.whatsapp_direct_message_template || null,
         Number(s.min_advance_hours) || 1,
         Number(s.max_advance_days) || 60,
         Number(s.slot_interval_minutes) || 30,
@@ -156,6 +160,23 @@ export async function POST(req: NextRequest) {
       }
       await pushAllTablesToTurso();
       return NextResponse.json({ success: true });
+    }
+
+    // 2.1 Alternar modo de operação (Essencial WhatsApp vs Agenda Online Completa)
+    if (body.action === "toggle_booking_mode") {
+      const targetMode = body.booking_mode || "whatsapp_direct";
+      const targetPhone = body.whatsapp_direct_phone;
+      const targetMsg = body.whatsapp_direct_message_template;
+      db.prepare(
+        `UPDATE site_settings
+         SET booking_mode = ?,
+             whatsapp_direct_phone = COALESCE(?, whatsapp_direct_phone),
+             whatsapp_direct_message_template = COALESCE(?, whatsapp_direct_message_template),
+             updated_at = ?
+         WHERE id = 'main'`
+      ).run(targetMode, targetPhone || null, targetMsg || null, now);
+      await pushAllTablesToTurso();
+      return NextResponse.json({ success: true, booking_mode: targetMode });
     }
 
     // 3. Criar novo botão

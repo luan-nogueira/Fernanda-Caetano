@@ -382,6 +382,66 @@ export default function AdminSiteEditorPage() {
         </div>
       )}
 
+      {/* BARRA DE MODO DE OPERAÇÃO (WHATSAPP DIRETO VS AGENDA ONLINE) */}
+      {settings && (
+        <div className="p-4 rounded-2xl bg-navy text-offwhite border border-gold/30 flex flex-wrap items-center justify-between gap-3 shadow-md">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gold/20 flex items-center justify-center shrink-0">
+              <Sparkles className="w-5 h-5 text-gold" />
+            </div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-gold">
+                Modo de Operação do Site
+              </p>
+              <p className="text-xs sm:text-sm font-medium text-offwhite">
+                {settings.booking_mode === "whatsapp_direct"
+                  ? "🟢 Modo Essencial (WhatsApp Direto) — Botões e procedimentos direcionam para o WhatsApp oficial"
+                  : "🟣 Modo Completo (Agenda Online) — Calendário integrado de vagas e horários ativo"}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={async () => {
+                const nextMode =
+                  settings.booking_mode === "whatsapp_direct"
+                    ? "automatic"
+                    : "whatsapp_direct";
+                await fetch("/api/admin/site", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    action: "toggle_booking_mode",
+                    booking_mode: nextMode,
+                  }),
+                });
+                setSettings({ ...settings, booking_mode: nextMode });
+                showSuccessToast(
+                  nextMode === "whatsapp_direct"
+                    ? "Modo Essencial (WhatsApp Direto) ativado com sucesso!"
+                    : "Modo Agenda Online Completa ativado com sucesso!"
+                );
+              }}
+              className="px-3.5 py-2 rounded-xl bg-gold hover:bg-gold-light text-navy font-semibold text-xs transition-colors shadow-sm"
+            >
+              Alternar para{" "}
+              {settings.booking_mode === "whatsapp_direct"
+                ? "Agenda Online"
+                : "WhatsApp Direto"}
+            </button>
+
+            <Link
+              href="/admin/configuracoes"
+              className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-offwhite text-xs font-medium border border-gold/20"
+            >
+              Configurar →
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Abas do Editor */}
       <div className="flex flex-wrap items-center gap-2 border-b border-offwhite-border pb-3">
         {(

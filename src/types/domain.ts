@@ -40,8 +40,10 @@ export interface SiteSettings {
   accent_color: string;
   background_color: string;
   gold_color: string;
-  booking_mode: "automatic" | "approval";
+  booking_mode: "automatic" | "approval" | "whatsapp_direct";
   online_booking_enabled: number | boolean;
+  whatsapp_direct_phone?: string;
+  whatsapp_direct_message_template?: string;
   min_advance_hours: number;
   max_advance_days: number;
   slot_interval_minutes: number;
