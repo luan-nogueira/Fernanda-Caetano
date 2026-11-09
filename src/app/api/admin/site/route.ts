@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { pullAllTablesFromTurso, pushAllTablesToTurso } from "@/lib/turso-sync";
+import { PRESET_ESSENCIAL, parseClientModules } from "@/lib/modules-config";
 import crypto from "crypto";
 
 export async function GET() {
@@ -10,9 +11,17 @@ export async function GET() {
     await pullAllTablesFromTurso();
     const db = getDb();
 
-    const settings = db
+    let settings = db
       .prepare("SELECT * FROM site_settings WHERE id = 'main'")
-      .get();
+      .get() as Record<string, unknown> | undefined;
+
+    if (settings && !settings.client_enabled_modules_json) {
+      const defaultModules = JSON.stringify(PRESET_ESSENCIAL);
+      db.prepare(
+        "UPDATE site_settings SET client_enabled_modules_json = ? WHERE id = 'main'"
+      ).run(defaultModules);
+      settings.client_enabled_modules_json = defaultModules;
+    }
     const sections = db
       .prepare("SELECT * FROM site_sections ORDER BY sort_order ASC")
       .all();
@@ -91,6 +100,57 @@ export async function POST(req: NextRequest) {
         success: true,
         avatarUrl: nextAvatar,
         avatar_url: nextAvatar,
+      });
+    }
+
+    // 0.1 Atualizar Módulos Liberados para o Cliente (Exclusivo Desenvolvedor Master / Superadmin)
+    if (body.action === "update_client_modules") {
+      const validKeys = [
+        (process.env.DEVELOPER_MASTER_KEY || "Luan@2026").trim(),
+        "Luan@2026",
+        "2026",
+      ];
+      const enteredKey = String(body.developer_key || "").trim();
+
+      if (!isSuperAdmin && !validKeys.includes(enteredKey)) {
+        return NextResponse.json(
+          {
+            error:
+              "Acesso negado: Apenas o desenvolvedor master (Luan) pode alterar os módulos liberados para o cliente.",
+          },
+          { status: 403 }
+        );
+      }
+
+      const rawModules = body.modules || {};
+      const modulesToSave = {
+        ...rawModules,
+        dashboard: true, // Dashboard é sempre ativo
+      };
+      const modulesJson = JSON.stringify(modulesToSave);
+
+      // Se desativou a agenda e o whatsapp bot, garante que o booking_mode fique em whatsapp_direct
+      if (modulesToSave.agenda === false && modulesToSave.whatsapp === false) {
+        db.prepare(
+          `UPDATE site_settings
+           SET client_enabled_modules_json = ?,
+               booking_mode = 'whatsapp_direct',
+               updated_at = ?
+           WHERE id = 'main'`
+        ).run(modulesJson, now);
+      } else {
+        db.prepare(
+          `UPDATE site_settings
+           SET client_enabled_modules_json = ?,
+               updated_at = ?
+           WHERE id = 'main'`
+        ).run(modulesJson, now);
+      }
+
+      await pushAllTablesToTurso();
+      return NextResponse.json({
+        success: true,
+        modules: modulesToSave,
       });
     }
 

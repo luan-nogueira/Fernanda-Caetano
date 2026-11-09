@@ -4,6 +4,12 @@ import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AvatarCropperModal } from "@/components/AvatarCropperModal";
+import { ClientModulesManagerModal } from "@/components/ClientModulesManagerModal";
+import {
+  PRESET_ESSENCIAL,
+  parseClientModules,
+  isRouteAllowedForClient,
+} from "@/lib/modules-config";
 import {
   LayoutDashboard,
   Calendar,
@@ -22,59 +28,81 @@ import {
   CheckCircle2,
   GraduationCap,
   Camera,
+  Sliders,
+  EyeOff,
+  Lock,
 } from "lucide-react";
 
-const NAV_ITEMS = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
+interface NavItem {
+  id: string;
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  exact?: boolean;
+  badge?: string;
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { id: "dashboard", href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   {
+    id: "agenda",
     href: "/admin/agenda",
     label: "Agenda de Atendimentos",
     icon: Calendar,
     badge: "Principal",
   },
   {
+    id: "cursos",
     href: "/admin/cursos",
     label: "Cursos & Área de Alunos",
     icon: GraduationCap,
     badge: "Novo",
   },
   {
+    id: "site",
     href: "/admin/site",
     label: "Editor da Página Pública",
     icon: Palette,
   },
   {
+    id: "whatsapp",
     href: "/admin/whatsapp",
     label: "WhatsApp Bot & QR Code",
     icon: QrCode,
     badge: "Bot",
   },
   {
+    id: "procedimentos",
     href: "/admin/procedimentos",
     label: "Procedimentos & Categorias",
     icon: Sparkles,
   },
   {
+    id: "unidades",
     href: "/admin/unidades",
     label: "Unidades de Atendimento",
     icon: Building2,
   },
   {
+    id: "horarios",
     href: "/admin/horarios",
     label: "Horários & Bloqueios",
     icon: Clock,
   },
   {
+    id: "clientes",
     href: "/admin/clientes",
     label: "Clientes",
     icon: Users,
   },
   {
+    id: "notificacoes",
     href: "/admin/notificacoes",
     label: "Notificações",
     icon: Bell,
   },
   {
+    id: "configuracoes",
     href: "/admin/configuracoes",
     label: "Configurações & Segurança",
     icon: Settings,
@@ -86,7 +114,17 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string>("/images/fernanda-portrait.svg");
+  const [currentUser, setCurrentUser] = useState<{
+    email: string;
+    role: string;
+  } | null>(null);
+  const [clientModules, setClientModules] = useState<Record<string, boolean>>(
+    PRESET_ESSENCIAL
+  );
+  const [modulesModalOpen, setModulesModalOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string>(
+    "/images/fernanda-portrait.svg"
+  );
   const [cropperSrc, setCropperSrc] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -102,21 +140,33 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         if (!res.ok) {
           router.replace("/admin/login");
         } else {
-          setAuthChecked(true);
-          fetch("/api/admin/site")
-            .then((r) => r.json())
-            .then((data) => {
-              if (data?.settings?.avatar_url) {
-                setAvatarUrl(data.settings.avatar_url);
-              }
-            })
-            .catch(() => {});
+          return res.json().then((authData) => {
+            if (authData?.user) {
+              setCurrentUser(authData.user);
+            }
+            setAuthChecked(true);
+            return fetch("/api/admin/site");
+          });
+        }
+      })
+      .then((r) => (r ? r.json() : null))
+      .then((data) => {
+        if (data?.currentUser) {
+          setCurrentUser(data.currentUser);
+        }
+        if (data?.settings?.avatar_url) {
+          setAvatarUrl(data.settings.avatar_url);
+        }
+        if (data?.settings?.client_enabled_modules_json) {
+          setClientModules(
+            parseClientModules(data.settings.client_enabled_modules_json)
+          );
         }
       })
       .catch(() => {
         router.replace("/admin/login");
       });
-  }, [isLoginPage, router, pathname]);
+  }, [isLoginPage, router]);
 
   useEffect(() => {
     function handleAvatarEvent(e: Event) {
@@ -125,9 +175,18 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         setAvatarUrl(custom.detail);
       }
     }
+    function handleModulesEvent(e: Event) {
+      const custom = e as CustomEvent<Record<string, boolean>>;
+      if (custom.detail) {
+        setClientModules(custom.detail);
+      }
+    }
+
     window.addEventListener("fernanda-avatar-updated", handleAvatarEvent);
+    window.addEventListener("fc-modules-updated", handleModulesEvent);
     return () => {
       window.removeEventListener("fernanda-avatar-updated", handleAvatarEvent);
+      window.removeEventListener("fc-modules-updated", handleModulesEvent);
     };
   }, []);
 
@@ -206,6 +265,21 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  const isSuperAdmin =
+    currentUser?.role === "superadmin" ||
+    currentUser?.email?.toLowerCase() === "luanmnogueira@gmail.com";
+
+  // Se for superadmin (Luan), mostra TODOS os 11 itens. Se for cliente (Fernanda), filtra os módulos ativos.
+  const visibleNavItems = isSuperAdmin
+    ? NAV_ITEMS
+    : NAV_ITEMS.filter(
+        (item) => item.id === "dashboard" || clientModules[item.id] !== false
+      );
+
+  // Guarda de rota para navegação direta pela URL
+  const isAllowedRoute =
+    isSuperAdmin || isRouteAllowedForClient(pathname, clientModules);
+
   const todayFormatted = new Intl.DateTimeFormat("pt-BR", {
     weekday: "long",
     day: "2-digit",
@@ -229,6 +303,15 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           imageSrc={cropperSrc}
           onClose={() => setCropperSrc(null)}
           onConfirmCrop={handleSaveCroppedAvatar}
+        />
+      )}
+
+      {isSuperAdmin && (
+        <ClientModulesManagerModal
+          isOpen={modulesModalOpen}
+          onClose={() => setModulesModalOpen(false)}
+          currentModules={clientModules}
+          onModulesSaved={(newMods) => setClientModules(newMods)}
         />
       )}
 
@@ -274,14 +357,27 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        <Link
-          href="/"
-          target="_blank"
-          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white/10 text-xs font-medium text-offwhite"
-        >
-          <span>Ver Site</span>
-          <ExternalLink className="w-3.5 h-3.5 text-gold" />
-        </Link>
+        <div className="flex items-center gap-2">
+          {isSuperAdmin && (
+            <button
+              type="button"
+              onClick={() => setModulesModalOpen(true)}
+              className="p-2 rounded-xl bg-amber-400/20 text-amber-200 border border-amber-300/30 text-xs font-bold"
+              title="Gerenciar módulos ativos para Fernanda"
+            >
+              <Sliders className="w-4 h-4" />
+            </button>
+          )}
+
+          <Link
+            href="/"
+            target="_blank"
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white/10 text-xs font-medium text-offwhite"
+          >
+            <span>Ver Site</span>
+            <ExternalLink className="w-3.5 h-3.5 text-gold" />
+          </Link>
+        </div>
       </header>
 
       {/* Sidebar Desktop + Drawer Mobile */}
@@ -324,12 +420,43 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
+        {/* Bloco Master Dev Exclusivo Luan */}
+        {isSuperAdmin && (
+          <div className="mx-4 mt-3 mb-1 p-3 rounded-2xl bg-amber-500/10 border border-amber-400/25 text-offwhite shadow-xs">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                <span className="font-semibold text-amber-200 text-xs tracking-wide">
+                  Master (Luan)
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModulesModalOpen(true)}
+                className="px-2.5 py-1 rounded-lg bg-amber-400/20 hover:bg-amber-400/30 text-[11px] font-bold text-amber-200 border border-amber-300/30 transition-all flex items-center gap-1.5 shadow-xs"
+                title="Ativar ou desativar funções na lateral da Fernanda"
+              >
+                <Sliders className="w-3 h-3 text-gold" />
+                <span>Gerenciar</span>
+              </button>
+            </div>
+            <p className="text-[10px] text-white/65 mt-1 leading-tight">
+              Você vê a tela completa. Clique em &ldquo;Gerenciar&rdquo; para ligar/desligar abas da Fernanda.
+            </p>
+          </div>
+        )}
+
+        {/* Lista de Navegação */}
         <nav className="flex-1 p-4 space-y-1.5">
-          {NAV_ITEMS.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = item.exact
               ? pathname === item.href
               : pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const isHiddenForClient =
+              isSuperAdmin &&
+              item.id !== "dashboard" &&
+              clientModules[item.id] === false;
 
             return (
               <Link
@@ -342,25 +469,36 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                     : "text-white/90 hover:bg-white/10 hover:text-white"
                 }`}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 min-w-0">
                   <Icon
                     className={`w-4 h-4 shrink-0 ${
                       isActive ? "text-white" : "text-gold"
                     }`}
                   />
-                  <span>{item.label}</span>
+                  <span className="truncate">{item.label}</span>
                 </div>
-                {item.badge && (
-                  <span
-                    className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
-                      isActive
-                        ? "bg-white/25 text-white"
-                        : "bg-white/15 text-gold-light"
-                    }`}
-                  >
-                    {item.badge}
-                  </span>
-                )}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {isHiddenForClient && (
+                    <span
+                      title="Oculto para a Fernanda no plano dela"
+                      className="inline-flex items-center gap-0.5 text-[9px] font-extrabold uppercase tracking-wider text-red-300 bg-red-950/70 border border-red-500/40 px-1.5 py-0.5 rounded-md"
+                    >
+                      <EyeOff className="w-2.5 h-2.5" />
+                      <span>Oculto</span>
+                    </span>
+                  )}
+                  {item.badge && (
+                    <span
+                      className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
+                        isActive
+                          ? "bg-white/25 text-white"
+                          : "bg-white/15 text-gold-light"
+                      }`}
+                    >
+                      {item.badge}
+                    </span>
+                  )}
+                </div>
               </Link>
             );
           })}
@@ -403,9 +541,28 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             <span className="capitalize font-normal text-slate/90">
               {todayFormatted}
             </span>
+            {isSuperAdmin && (
+              <>
+                <span className="text-offwhite-border">•</span>
+                <span className="text-[11px] font-mono font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md border border-amber-300">
+                  Sessão Master: {currentUser?.email}
+                </span>
+              </>
+            )}
           </div>
 
           <div className="flex items-center gap-2.5">
+            {isSuperAdmin && (
+              <button
+                type="button"
+                onClick={() => setModulesModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold transition-all shadow-xs"
+              >
+                <Sliders className="w-3.5 h-3.5 text-amber-700" />
+                <span>Gerenciar Módulos da Fernanda</span>
+              </button>
+            )}
+
             <Link
               href="/admin/cursos"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-offwhite hover:bg-navy hover:text-white text-navy text-xs font-medium transition-colors"
@@ -425,10 +582,35 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
-          {children}
+          {!isAllowedRoute ? (
+            <div className="bg-white rounded-3xl p-8 sm:p-12 border border-offwhite-border shadow-luxury text-center max-w-xl mx-auto my-12 animate-scale-up">
+              <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto mb-5 shadow-xs">
+                <Lock className="w-8 h-8 text-amber-600" />
+              </div>
+              <span className="text-[11px] font-mono uppercase tracking-widest text-amber-700 font-bold bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
+                Recurso Não Incluso
+              </span>
+              <h2 className="font-serif text-2xl font-bold text-navy mt-3 mb-2">
+                Módulo Indisponível no Plano Atual
+              </h2>
+              <p className="text-sm text-slate leading-relaxed mb-6">
+                Esta funcionalidade está desativada no seu pacote atual.
+                Para solicitar a ativação deste recurso (Agenda Online, Robô WhatsApp e automações),
+                entre em contato com o suporte ou desenvolvedor responsável.
+              </p>
+              <Link
+                href="/admin"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-navy hover:bg-navy-light text-white text-xs font-semibold transition-all shadow-md"
+              >
+                <LayoutDashboard className="w-4 h-4 text-gold" />
+                <span>Retornar ao Dashboard</span>
+              </Link>
+            </div>
+          ) : (
+            children
+          )}
         </main>
       </div>
     </div>
   );
 }
-

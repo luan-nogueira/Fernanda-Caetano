@@ -44,6 +44,7 @@ export interface SiteSettings {
   online_booking_enabled: number | boolean;
   whatsapp_direct_phone?: string;
   whatsapp_direct_message_template?: string;
+  client_enabled_modules_json?: string;
   min_advance_hours: number;
   max_advance_days: number;
   slot_interval_minutes: number;

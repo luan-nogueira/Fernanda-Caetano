@@ -459,6 +459,11 @@ function initSchemaAndSeed(db: AppDatabase) {
   } catch {
     // column already exists
   }
+  try {
+    db.exec("ALTER TABLE site_settings ADD COLUMN client_enabled_modules_json TEXT");
+  } catch {
+    // column already exists
+  }
 
   // Garante a existência do usuário desenvolvedor master (Luan)
   try {
