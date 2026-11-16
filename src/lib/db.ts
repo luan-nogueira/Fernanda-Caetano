@@ -125,6 +125,9 @@ export function getDb(): AppDatabase {
 
   initSchemaAndSeed(wrappedDb);
   global.__fernandaDb = wrappedDb;
+  // Marca o schema como inicializado: sem isso a próxima chamada a getDb() re-executava
+  // o seed depois do pull do Turso e quebrava com UNIQUE constraint (erro 500 em cold start).
+  global.__fernandaSchemaV2 = true;
   return wrappedDb;
 }
 
@@ -1503,7 +1506,7 @@ function seedCoursesModuleIfNeeded(db: AppDatabase) {
 
   // Aluno de demonstração para teste imediato do login
   db.prepare(
-    `INSERT INTO course_students (
+    `INSERT OR IGNORE INTO course_students (
       id, full_name, email, phone, password_hash, password_plain_hint,
       is_active, expires_at, notes, created_at, updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, 1, NULL, ?, ?, ?)`
@@ -1520,7 +1523,7 @@ function seedCoursesModuleIfNeeded(db: AppDatabase) {
   );
 
   db.prepare(
-    `INSERT INTO course_enrollments (id, student_id, course_id, granted_at)
+    `INSERT OR IGNORE INTO course_enrollments (id, student_id, course_id, granted_at)
      VALUES (?, ?, ?, ?)`
   ).run("enroll-demo-1", "student-demo-1", "course-feridas-laser", now);
 
