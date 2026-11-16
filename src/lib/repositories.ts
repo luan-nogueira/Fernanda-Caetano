@@ -24,7 +24,43 @@ export function getPublicSiteBundle(options?: {
 
   let settings = db
     .prepare("SELECT * FROM site_settings WHERE id = 'main'")
-    .get() as SiteSettings;
+    .get() as SiteSettings | undefined;
+
+  if (!settings) {
+    settings = {
+      id: "main",
+      professional_name: "Fernanda Caetano",
+      professional_subtitle: "Enfermeira Dermatológica e Esteta",
+      professional_bio:
+        "Especialista em Tratamento Avançado de Feridas, Laserterapia e Estética Avançada. Cuidado técnico, acolhedor e personalizado em cada atendimento.",
+      hero_badge: "FERIDAS • LASERTERAPIA • ESTÉTICA AVANÇADA",
+      avatar_url: "/images/fernanda-portrait.svg",
+      instagram_url: "https://www.instagram.com/enfernandacaetano/",
+      instagram_handle: "@enfernandacaetano",
+      primary_color: "#07152B",
+      accent_color: "#D97732",
+      background_color: "#F7F5F1",
+      gold_color: "#C5A46D",
+      booking_mode: "whatsapp_direct",
+      online_booking_enabled: 0,
+      whatsapp_direct_phone: "5522999792493",
+      whatsapp_direct_message_template:
+        "Olá, Dra. Fernanda! Vi o seu site e gostaria de agendar / saber mais sobre: *{procedimento}*.",
+      client_enabled_modules_json: undefined,
+      min_advance_hours: 1,
+      max_advance_days: 60,
+      slot_interval_minutes: 30,
+      booking_success_message:
+        "Solicitação enviada com sucesso! Em breve você receberá a confirmação no WhatsApp.",
+      privacy_policy_text: "",
+      about_full_text:
+        "Fernanda Caetano é Enfermeira Dermatológica e Esteta, dedicando sua prática clínica ao cuidado integral da pele, reabilitação tecidual em feridas agudas e crônicas e procedimentos de estética avançada.",
+      about_highlights_json: "[]",
+      draft_json: null,
+      published_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+  }
 
   // Se o administrador estiver visualizando a prévia (rascunho), mescla os dados do draft_json
   if (options?.previewDraft && settings?.draft_json) {
@@ -87,7 +123,7 @@ export function getPublicSiteBundle(options?: {
   });
 
   return {
-    settings,
+    settings: settings as SiteSettings,
     sections,
     links,
     units,
@@ -166,7 +202,31 @@ export function resolveCustomLinkHref(
       return { href: "/unidades", external: false };
     }
     case "whatsapp": {
-      const digits = (link.destination_value || "").replace(/\D/g, "");
+      let phone = link.destination_value || "";
+      const linkIdLower = (link.id || "").toLowerCase();
+      const linkTitleLower = (link.title || "").toLowerCase();
+
+      // Se for link de WhatsApp de unidade, busca dinamicamente o número atualizado daquela unidade
+      if (linkIdLower.includes("farol") || linkTitleLower.includes("farol")) {
+        const farolUnit = units.find(
+          (u) => u.id === "unit-farol" || u.slug.includes("farol")
+        );
+        if (farolUnit?.whatsapp_phone) {
+          phone = farolUnit.whatsapp_phone;
+        }
+      } else if (
+        linkIdLower.includes("platinum") ||
+        linkTitleLower.includes("platinum")
+      ) {
+        const platUnit = units.find(
+          (u) => u.id === "unit-platinum" || u.slug.includes("platinum")
+        );
+        if (platUnit?.whatsapp_phone) {
+          phone = platUnit.whatsapp_phone;
+        }
+      }
+
+      const digits = (phone || "").replace(/\D/g, "") || defaultPhone;
       const msg = link.whatsapp_message
         ? `?text=${encodeURIComponent(link.whatsapp_message)}`
         : "";

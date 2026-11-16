@@ -8,7 +8,11 @@ import { ShieldCheck, Lock, FileCheck2 } from "lucide-react";
 export const dynamic = "force-dynamic";
 
 export default async function PrivacidadePage() {
-  await pullAllTablesFromTurso();
+  try {
+    await pullAllTablesFromTurso();
+  } catch (err) {
+    console.error("Aviso no pullAllTablesFromTurso (PrivacidadePage):", err);
+  }
   const { settings } = getPublicSiteBundle();
 
   return (

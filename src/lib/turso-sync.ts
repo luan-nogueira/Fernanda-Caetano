@@ -80,6 +80,7 @@ export async function executeTursoPipeline(
     },
     body: JSON.stringify({ requests }),
     cache: "no-store",
+    signal: AbortSignal.timeout(6000),
   });
 
   if (!res.ok) {
@@ -135,10 +136,11 @@ export async function pushAllTablesToTurso(): Promise<void> {
  */
 export async function pullAllTablesFromTurso(force = false): Promise<boolean> {
   const nowMs = Date.now();
+  const cacheTtlMs = force ? 0 : 30000; // 30s de cache para leituras públicas (estabilidade e sem locks na Vercel)
   if (
     !force &&
     global.__tursoLastPullAt &&
-    nowMs - global.__tursoLastPullAt < 2000
+    nowMs - global.__tursoLastPullAt < cacheTtlMs
   ) {
     return true;
   }
@@ -171,7 +173,7 @@ export async function pullAllTablesFromTurso(force = false): Promise<boolean> {
 
     const db = getDb();
     db.exec("PRAGMA foreign_keys = OFF;");
-    const syncedTableNames = new Set<string>();
+    db.exec("BEGIN TRANSACTION;");
 
     try {
       for (const row of selectResult.rows) {
@@ -185,7 +187,6 @@ export async function pullAllTablesFromTurso(force = false): Promise<boolean> {
           continue;
         }
 
-        syncedTableNames.add(tableName);
         const parsedRows = JSON.parse(rowsJson);
         if (!Array.isArray(parsedRows)) continue;
 
@@ -206,45 +207,17 @@ export async function pullAllTablesFromTurso(force = false): Promise<boolean> {
           }
         }
       }
+
+      db.exec("COMMIT;");
+    } catch (txErr) {
+      try {
+        db.exec("ROLLBACK;");
+      } catch {
+        // ignore rollback error
+      }
+      throw txErr;
     } finally {
       db.exec("PRAGMA foreign_keys = ON;");
-    }
-
-    const hasCursosLinkSeeded = db
-      .prepare("SELECT id FROM site_sections WHERE id = 'cursos_link_seeded'")
-      .get();
-    if (!hasCursosLinkSeeded) {
-      const existingLink = db
-        .prepare(
-          "SELECT id FROM custom_links WHERE id = 'link-cursos' OR destination_value = '/cursos'"
-        )
-        .get();
-      const now = new Date().toISOString();
-      if (!existingLink) {
-        db.prepare(
-          `INSERT INTO custom_links (
-            id, title, subtitle, icon_name, destination_type, destination_value,
-            whatsapp_message, style_variant, badge_text, is_active, sort_order, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, '', ?, ?, 1, ?, ?, ?)`
-        ).run(
-          "link-cursos",
-          "Cursos, Capacitações & Área de Alunos",
-          "Acesse as vídeo-aulas exclusivas ou conheça as formações da Dra. Fernanda",
-          "GraduationCap",
-          "internal_page",
-          "/cursos",
-          "navy",
-          "ACADEMY",
-          3,
-          now,
-          now
-        );
-      }
-      db.prepare(
-        `INSERT OR REPLACE INTO site_sections (id, title, subtitle, is_visible, sort_order, updated_at)
-         VALUES ('cursos_link_seeded', 'seeded', '1', 0, 997, ?)`
-      ).run(now);
-      await pushAllTablesToTurso();
     }
 
     global.__tursoLastPullAt = Date.now();

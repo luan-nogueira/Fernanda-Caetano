@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
     const now = new Date().toISOString();
 
     if (body.action === "update_unit") {
+      const cleanPhone = (body.whatsapp_phone || "").replace(/\D/g, "");
       db.prepare(
         `UPDATE units
          SET name = ?,
@@ -71,11 +72,34 @@ export async function POST(req: NextRequest) {
         body.address_line,
         body.neighborhood_city,
         body.maps_url || "",
-        (body.whatsapp_phone || "").replace(/\D/g, ""),
+        cleanPhone,
         body.is_active ? 1 : 0,
         now,
         body.id
       );
+
+      // Sincroniza automaticamente os botões da página pública (custom_links) correspondentes
+      if (
+        body.id === "unit-farol" ||
+        String(body.name).toLowerCase().includes("farol")
+      ) {
+        db.prepare(
+          "UPDATE custom_links SET destination_value = ?, updated_at = ? WHERE id = 'link-5-whats-farol' OR title LIKE '%Farol%'"
+        ).run(cleanPhone, now);
+      } else if (
+        body.id === "unit-platinum" ||
+        String(body.name).toLowerCase().includes("platinum")
+      ) {
+        db.prepare(
+          "UPDATE custom_links SET destination_value = ?, updated_at = ? WHERE id = 'link-6-whats-platinum' OR title LIKE '%Platinum%'"
+        ).run(cleanPhone, now);
+      }
+
+      // Se as configurações gerais estiverem sem número, assume este número como padrão do site
+      db.prepare(
+        "UPDATE site_settings SET whatsapp_direct_phone = COALESCE(whatsapp_direct_phone, ?), updated_at = ? WHERE id = 'main'"
+      ).run(cleanPhone, now);
+
       await pushAllTablesToTurso();
       return NextResponse.json({ success: true });
     }

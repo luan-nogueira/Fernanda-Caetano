@@ -72,6 +72,7 @@ export function getDb(): AppDatabase {
 
   const rawDb = new DatabaseSync(DB_PATH);
   rawDb.exec("PRAGMA journal_mode = WAL;");
+  rawDb.exec("PRAGMA busy_timeout = 5000;");
   rawDb.exec("PRAGMA foreign_keys = ON;");
 
   const wrappedDb: AppDatabase = {

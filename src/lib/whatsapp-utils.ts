@@ -16,7 +16,7 @@ export function resolveDirectWhatsAppPhone(
       }
     }
   }
-  return "5522999990000";
+  return "5522999792493";
 }
 
 export function buildProcedureWhatsAppUrl(

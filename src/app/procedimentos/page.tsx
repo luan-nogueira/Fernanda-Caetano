@@ -29,11 +29,15 @@ function formatPriceBRL(cents: number | null, show: boolean | number) {
 }
 
 export default async function ProcedimentosPage() {
-  await pullAllTablesFromTurso();
+  try {
+    await pullAllTablesFromTurso();
+  } catch (err) {
+    console.error("Aviso no pullAllTablesFromTurso (ProcedimentosPage):", err);
+  }
   const bundle = getPublicSiteBundle();
   const { settings, categories, procedures, units } = bundle;
 
-  const isWhatsappDirect = settings.booking_mode === "whatsapp_direct";
+  const isWhatsappDirect = (settings?.booking_mode || "whatsapp_direct") === "whatsapp_direct";
   const directPhone = resolveDirectWhatsAppPhone(settings, units);
 
   return (

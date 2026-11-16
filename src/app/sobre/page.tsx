@@ -15,12 +15,16 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function SobrePage() {
-  await pullAllTablesFromTurso();
+  try {
+    await pullAllTablesFromTurso();
+  } catch (err) {
+    console.error("Aviso no pullAllTablesFromTurso (SobrePage):", err);
+  }
   const { settings } = getPublicSiteBundle();
 
   let highlights: Array<{ title: string; description: string }> = [];
   try {
-    highlights = JSON.parse(settings.about_highlights_json || "[]");
+    highlights = JSON.parse(settings?.about_highlights_json || "[]");
   } catch {
     highlights = [];
   }

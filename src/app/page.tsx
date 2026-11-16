@@ -31,18 +31,22 @@ export default async function HomePage({
 }) {
   const sp = await searchParams;
   const isPreview = sp?.preview === "1";
-  await pullAllTablesFromTurso();
+  try {
+    await pullAllTablesFromTurso();
+  } catch (err) {
+    console.error("Aviso no pullAllTablesFromTurso (HomePage):", err);
+  }
   const bundle = getPublicSiteBundle({ previewDraft: isPreview });
   const { settings, sections, links, units, procedures } = bundle;
 
-  const isWhatsappDirect = settings.booking_mode === "whatsapp_direct";
+  const isWhatsappDirect = (settings?.booking_mode || "whatsapp_direct") === "whatsapp_direct";
   const directPhone = resolveDirectWhatsAppPhone(settings, units);
 
-  const visibleSections = sections.filter((s) => Boolean(s.is_visible));
+  const visibleSections = (sections || []).filter((s) => Boolean(s.is_visible));
 
   let highlights: Array<{ title: string; description: string }> = [];
   try {
-    highlights = JSON.parse(settings.about_highlights_json || "[]");
+    highlights = JSON.parse(settings?.about_highlights_json || "[]");
   } catch {
     highlights = [];
   }

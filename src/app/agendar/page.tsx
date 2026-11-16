@@ -16,13 +16,17 @@ export default async function AgendarPage({
   searchParams: Promise<{ procedimento?: string; unidade?: string }>;
 }) {
   const sp = await searchParams;
-  await pullAllTablesFromTurso();
+  try {
+    await pullAllTablesFromTurso();
+  } catch (err) {
+    console.error("Aviso no pullAllTablesFromTurso (AgendarPage):", err);
+  }
   const { settings, procedures, units } = getPublicSiteBundle();
   const { todayStr } = getSaoPauloNow();
 
   const isWhatsappDirect =
-    settings.booking_mode === "whatsapp_direct" ||
-    !Boolean(settings.online_booking_enabled);
+    (settings?.booking_mode || "whatsapp_direct") === "whatsapp_direct" ||
+    !Boolean(settings?.online_booking_enabled);
 
   return (
     <div className="min-h-screen flex flex-col bg-offwhite">

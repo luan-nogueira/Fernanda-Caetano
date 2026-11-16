@@ -15,7 +15,11 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function UnidadesPage() {
-  await pullAllTablesFromTurso();
+  try {
+    await pullAllTablesFromTurso();
+  } catch (err) {
+    console.error("Aviso no pullAllTablesFromTurso (UnidadesPage):", err);
+  }
   const { settings, units, procedures } = getPublicSiteBundle();
 
   return (
